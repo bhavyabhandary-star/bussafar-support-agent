@@ -1,0 +1,11 @@
+.env
+.streamlit/secrets.toml
+index/
+tickets.csv
+tickets.csv.lock
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+env.txt

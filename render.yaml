@@ -1,0 +1,19 @@
+# Render Blueprint for BusSafar Support (Sahil).
+# Render > New > Blueprint > pick this repo. You will be asked for the two secrets.
+services:
+  - type: web
+    name: bussafar-support
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: GOOGLE_API_KEY
+        sync: false   # secret: entered in the Render dashboard, never committed
+      - key: APP_PASSCODE
+        sync: false   # secret: entered in the Render dashboard, never committed
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-3.5-flash-lite

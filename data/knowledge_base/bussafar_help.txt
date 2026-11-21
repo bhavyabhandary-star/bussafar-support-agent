@@ -1,0 +1,60 @@
+BusSafar Help Docs
+BusSafar is a made-up business. This document is practice data for a learning project.
+BusSafar is a made-up app for booking intercity bus tickets with many bus operators across India.
+Frequently asked questions
+Q: How do I book a bus ticket?
+A: Search your route and date, pick a bus and seat, add passenger details and pay.
+Q: Do I need to print my ticket?
+A: No. Show the m-ticket SMS or the ticket in the app, with a photo ID.
+Q: Which ID proof is needed?
+A: Any government photo ID: Aadhaar, PAN, driving licence, voter ID or passport.
+Q: Can I book for someone else?
+A: Yes. Enter the traveller's name and age. They must carry their own ID.
+Q: How early should I reach the boarding point?
+A: At least 15 minutes before departure.
+Q: Which payment methods are accepted?
+A: UPI, cards, net banking and wallets. Cash is not accepted.
+Q: How do I cancel my ticket?
+A: Go to My Trips, choose the booking and tap Cancel. The refund depends on how early you cancel.
+Q: How much refund will I get if I cancel?
+A: More than 24 hours before departure: 90%. 12 to 24 hours before: 50%. Less than 12 hours: no refund.
+Q: When will I get my refund?
+A: Within 5 to 7 working days, to the original payment method.
+Q: Can I change my travel date?
+A: Yes, once, up to 24 hours before departure, for a ₹100 fee plus any fare difference.
+Q: Can I change the passenger name?
+A: No. Cancel the ticket and book a new one.
+Q: What if the operator cancels the bus?
+A: You get a full refund automatically within 3 working days.
+Q: What if the bus is late?
+A: Track the bus live in the app. If it is more than 3 hours late, you can cancel for a full refund.
+Q: How much luggage can I carry?
+A: One bag up to 15 kg and one small handbag. The operator may charge for extra luggage.
+Q: Are pets allowed?
+A: Pets are not allowed on most buses. Check the bus details page.
+Q: Can I choose my seat?
+A: Yes, from the seat map while booking. Seats for women are marked in pink.
+Q: Do you have sleeper buses?
+A: Yes. Filter by Sleeper or AC Sleeper while searching.
+Q: Do you have discounts?
+A: First-time users get ₹100 off with code FIRSTSAFAR. One coupon per booking.
+Q: Is there a safety feature for women?
+A: Yes. Share your live trip with family from the app and use the SOS button in an emergency.
+Q: I didn't get my ticket SMS.
+A: Open My Trips in the app. You can resend the ticket by SMS or email from there.
+Policies
+Policy: Cancellation and refund policy
+More than 24 hours before departure: 90% refund.
+12 to 24 hours before departure: 50% refund.
+Less than 12 hours before departure: no refund.
+Refunds reach the original payment method within 5 to 7 working days.
+One date change is allowed up to 24 hours before departure, for ₹100 plus any fare difference.
+Policy: Travel rules
+Every traveller must carry a government photo ID.
+Reach the boarding point 15 minutes before departure.
+One bag up to 15 kg and one small handbag per traveller.
+Smoking, alcohol and loud music are not allowed on the bus.
+Policy: Delays and operator cancellations
+If the operator cancels the bus, the full fare is refunded within 3 working days.
+If the bus is more than 3 hours late, the traveller can cancel for a full refund.
+In an emergency on the road, call 112 and use the SOS button in the app.

@@ -1,0 +1,13 @@
+pnr,passenger_name,phone_last4,route,travel_date,seat,status,amount_inr
+BS558954,Gaurav Thakur,2087,Bengaluru to Goa,17-Nov-2026,L29,Completed,1450
+BS553205,Tanvi Desai,1120,Mumbai to Pune,19-Nov-2026,U10,Completed,550
+BS534657,Pooja Verma,1167,Delhi to Jaipur,18-Nov-2026,S33,Completed,750
+BS561084,Meera Nair,1680,Hyderabad to Vijayawada,25-Nov-2026,U10,Confirmed,650
+BS532254,Arjun Reddy,2242,Chennai to Bengaluru,28-Nov-2026,S30,Cancelled,900
+BS562013,Siddharth Jain,9255,Pune to Goa,25-Nov-2026,L15,Confirmed,1200
+BS572724,Aarav Mehta,9512,Delhi to Dehradun,21-Nov-2026,6,Confirmed,800
+BS560647,Ishaan Gupta,6744,Ahmedabad to Udaipur,18-Nov-2026,U31,Completed,700
+BS597452,Nikhil Chauhan,2037,Kolkata to Siliguri,26-Nov-2026,18,Confirmed,1300
+BS599094,Farhan Ali,9781,Indore to Bhopal,24-Nov-2026,2,Confirmed,450
+BS575904,Riya Bose,6702,Lucknow to Delhi,21-Nov-2026,U20,Confirmed,1100
+BS582459,Neha Patil,4266,Kochi to Bengaluru,21-Nov-2026,34,Cancelled,1250
