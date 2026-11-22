@@ -255,7 +255,21 @@ class Sahil:
             return {"found": False, "message": result["message"]}
         return {"found": True, "booking": result["booking"]}
 
+    def _open_session_ticket(self) -> str | None:
+        """The latest ticket raised in this chat that is not Done yet (safety tickets excluded)."""
+        for tid in reversed(list(self.session_tickets.values())):
+            row = self.tickets.get_ticket(tid)
+            if row is None or row.get("status") not in ("Done", "done", "closed", "resolved"):
+                return tid
+        return None
+
     def _tool_ticket(self, args: dict, message: str) -> dict:
+        existing = self._open_session_ticket()
+        if existing and str(args.get("category", "")).lower() != "safety":
+            # One ticket per chat: repeat requests point back to the open ticket.
+            return {"success": False, "already_open": True, "ticket_id": existing,
+                    "message": (f"This customer already has open ticket {existing}. Do not create another. "
+                                "Remind them of it in fresh words; a person will reply within 24 hours.")}
         try:
             t = self.tickets.create_ticket(
                 customer_query=args.get("customer_message") or message,
@@ -278,6 +292,30 @@ class Sahil:
         "refund_dispute": "Refund requests above ₹2,000 are reviewed by a person from our support team.",
     }
 
+    def _pick(self, options: list[str]) -> str:
+        """First option not used as Sahil's last reply, so Sahil never repeats itself word for word."""
+        last = next((m["text"] for m in reversed(self.history) if m["role"] == "model"), "")
+        return next((o for o in options if o != last), options[0])
+
+    def _conversation_reply(self, msg: str) -> SahilResponse | None:
+        """Small talk, gibberish and rude messages, handled in code: no greeting loop, no ticket."""
+        if guardrails.detect_abuse(msg) and not _PNR_IN_TEXT.search(msg):
+            text = self._pick(guardrails.ABUSE_REPLIES)
+            open_tid = self._open_session_ticket()
+            if open_tid:
+                text = (f"I'm sorry this has been frustrating. Your ticket {open_tid} is with our support team, "
+                        f"and {config.TICKET_REPLY_PROMISE[0].lower() + config.TICKET_REPLY_PROMISE[1:]} "
+                        "Meanwhile, I can still help with any question about your trip.")
+                if text == next((m["text"] for m in reversed(self.history) if m["role"] == "model"), ""):
+                    text = (f"I understand the wait is annoying. {open_tid} is the only ticket you need; "
+                            "a specialist needs to review it. Is there anything else about your trip I can help with?")
+            return SahilResponse(text, flags=["abuse"])
+        if guardrails.detect_gibberish(msg):
+            return SahilResponse(guardrails.GIBBERISH_REPLY, flags=["gibberish"])
+        if guardrails.detect_small_talk(msg):
+            return SahilResponse(self._pick(guardrails.SMALL_TALK_REPLIES), flags=["small_talk"])
+        return None
+
     def _rule_escalation(self, msg: str) -> SahilResponse | None:
         """Hand-offs the brief requires, enforced in code (one ticket per issue type per chat)."""
         category = guardrails.detect_handoff(msg)
@@ -289,10 +327,10 @@ class Sahil:
         if category is None:
             return None
         opener = self._ESCALATION_OPENERS[category]
-        existing = self.session_tickets.get(category)
+        existing = self._open_session_ticket()  # one ticket per chat, whatever the category
         if existing:
-            text = (f"{opener} You already have an open ticket for this ({existing}), so I haven't "
-                    f"created another one. {config.TICKET_REPLY_PROMISE}")
+            text = (f"{opener} You already have an open ticket, {existing}, so I haven't created "
+                    f"another one. {config.TICKET_REPLY_PROMISE}")
             return SahilResponse(text, ticket_ids=[], flags=["escalation_existing"])
         pnr_m = _PNR_IN_TEXT.search(msg)
         result = self._tool_ticket({
@@ -419,6 +457,11 @@ class Sahil:
             self._remember(msg, escalation.text)
             return escalation
 
+        conversational = self._conversation_reply(msg)
+        if conversational is not None:
+            self._remember(msg, conversational.text)
+            return conversational
+
         direct = self._direct_booking_lookup(msg)
         if direct is not None:
             self._remember(msg, direct.text)
@@ -498,6 +541,10 @@ class Sahil:
             inferred = infer_citation(clean, chunks)
             if inferred:
                 clean = f"{clean} (Source: {inferred})"
+        last_reply = next((m["text"] for m in reversed(self.history) if m["role"] == "model"), "")
+        if clean.strip() == last_reply.strip() or clean.strip() == config.GREETING:
+            clean = ("Could you tell me a bit more about what you need? I can help with bookings, ID proof, "
+                     "cancellations and refunds, date changes, delays, luggage and safety.")
         cited = [s for s in allowed_sources if s.lower() in clean.lower()]
         self._remember(msg, clean)
         return SahilResponse(clean, sources=cited, ticket_ids=new_tickets, booking=booking)
