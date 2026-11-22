@@ -76,11 +76,12 @@
   form.append(input, send);
 
   const quick = el("div", "sahil-quick");
-  [["Check booking", "I want to check my booking status"], ["Refund rules", "How much refund will I get if I cancel?"],
-   ["Talk to a person", "I want to speak to a person."]].forEach(([label, q]) => {
+  // Chips that open a form go straight to the fields; the others send a question.
+  [["Check booking", () => showForm("booking")], ["Refund rules", () => ask("How much refund will I get if I cancel?")],
+   ["Track ticket", () => showForm("ticket_status")], ["Talk to a person", () => showForm("contact")]].forEach(([label, fn]) => {
     const b = el("button", "chip chip-sm", label);
     b.type = "button";
-    b.addEventListener("click", () => ask(q));
+    b.addEventListener("click", fn);
     quick.append(b);
   });
 
@@ -110,6 +111,99 @@
     [["PNR", bk.pnr], ["Route", bk.route], ["Date", bk.travel_date], ["Seat", bk.seat], ["Status", bk.status]]
       .forEach(([k, v]) => { if (v) { c.append(el("dt", null, k), el("dd", k === "Status" ? "st st-" + String(v).toLowerCase().replace(/[^a-z]/g, "") : null, v)); } });
     return c;
+  }
+
+  // ---- in-chat forms: the customer fills fields; Sahil gets them in the right shape ----
+  let categories = [];
+  let pendingForm = null;
+  fetch("/api/help").then((r) => r.json()).then((d) => { categories = d.ticket_categories || []; }).catch(() => {});
+
+  function field(labelText, control) {
+    const l = el("label", "sahil-field");
+    l.append(el("span", null, labelText), control);
+    return l;
+  }
+  function textInput(attrs) {
+    const i = el("input");
+    Object.entries(attrs).forEach(([k, v]) => { i[k] = v; });
+    return i;
+  }
+
+  function showForm(type, opts) {
+    opts = opts || {};
+    if (!session) { pendingForm = { type, opts }; return needsPasscode ? showGate(true) : start("").then(() => showForm(type, opts)); }
+    const row = el("div", "sahil-msg bot");
+    const card = el("form", "sahil-bubble sahil-card");
+    card.noValidate = true;
+    const err = el("p", "sahil-err");
+    const go = el("button", "btn btn-primary btn-sm");
+    go.type = "submit";
+    let fields = [];
+    let submit;
+
+    if (type === "booking") {
+      card.append(el("strong", null, "Check booking status"));
+      const pnr = textInput({ placeholder: "BS123456", maxLength: 12, value: opts.pnr || "", autocomplete: "off" });
+      pnr.style.textTransform = "uppercase";
+      const last4 = textInput({ type: "password", placeholder: "••••", maxLength: 4, inputMode: "numeric", autocomplete: "off" });
+      fields = [field("PNR", pnr), field("Last 4 digits of phone", last4)];
+      go.textContent = "Check status";
+      submit = () => {
+        const p = pnr.value.replace(/\s+/g, "").toUpperCase();
+        const d = last4.value.trim();
+        if (!/^BS\d{6}$/.test(p)) return "PNR is BS followed by 6 digits, like BS123456.";
+        if (!/^\d{4}$/.test(d)) return "Enter the last 4 digits of the phone number on the booking.";
+        ask(`Check my booking. PNR ${p}, phone ends in ${d}`, `PNR ${p} · phone ending ••••`);
+      };
+    } else if (type === "ticket_status") {
+      card.append(el("strong", null, "Track a support ticket"));
+      const tid = textInput({ placeholder: "TKT-1001", maxLength: 12, autocomplete: "off" });
+      fields = [field("Ticket ID", tid)];
+      go.textContent = "Check ticket";
+      submit = () => {
+        const m = tid.value.trim().toUpperCase().match(/^(?:TKT[\s-]?)?(\d{4,6})$/);
+        if (!m) return "Ticket IDs look like TKT-1001.";
+        ask(`What is the status of TKT-${m[1]}?`);
+      };
+    } else {
+      card.append(el("strong", null, "Contact a person"));
+      const sel = el("select");
+      (categories.length ? categories : [{ id: "other", label: "Other" }]).forEach((c) => {
+        const o = el("option", null, c.label); o.value = c.id; sel.append(o);
+      });
+      const pnr = textInput({ placeholder: "BS123456 (optional)", maxLength: 12, autocomplete: "off" });
+      const desc = el("textarea");
+      desc.rows = 3; desc.maxLength = 1000; desc.placeholder = "What happened?";
+      fields = [field("Issue type", sel), field("PNR (optional)", pnr), field("Describe the issue", desc)];
+      go.textContent = "Create ticket";
+      submit = async () => {
+        if (desc.value.trim().length < 5) return "Please describe the issue before creating a ticket.";
+        const label = sel.options[sel.selectedIndex].text;
+        bubble("me", `${label}: ${desc.value.trim()}`);
+        const t = typing();
+        try {
+          const d = await post("/api/ticket", { session, category: sel.value, description: desc.value, pnr: pnr.value });
+          t.remove();
+          turns.push({ role: "user", text: `[Contact form] ${label}: ${desc.value.trim()}` }, { role: "model", text: d.text });
+          bubble("bot", d.text, d);
+          if (d.emergency) sos.hidden = false;
+        } catch (e2) { t.remove(); bubble("bot", e2.message); }
+      };
+    }
+    fields.forEach((f) => card.append(f));
+    card.append(err, go);
+    card.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (busy) return;
+      const problem = await submit();
+      if (problem) { err.textContent = problem; return; }
+      card.classList.add("is-done");
+      card.querySelectorAll("input, select, textarea, button").forEach((n) => { n.disabled = true; });
+    });
+    row.append(card);
+    log.append(row);
+    log.scrollTop = log.scrollHeight;
+    setTimeout(() => { const first = card.querySelector("input, select, textarea"); first && first.focus(); }, 50);
   }
 
   function typing() {
@@ -151,20 +245,21 @@
     return starting;
   }
 
-  async function ask(text) {
+  async function ask(text, shown) {
     text = (text || "").trim();
     if (!text || busy) return;
     if (!session) { pending = text; return showGate(true); }
     busy = true;
     send.disabled = true;
-    bubble("me", text);
+    bubble("me", shown || text);
     const t = typing();
     try {
       const d = await post("/api/chat", { session, message: text, history: turns.slice(-12) });
-      turns.push({ role: "user", text }, { role: "model", text: d.text });
+      turns.push({ role: "user", text: shown || text }, { role: "model", text: d.text });
       t.remove();
       bubble("bot", d.text, d);
       if (d.emergency) sos.hidden = false;
+      if (d.form) showForm(d.form.type, d.form);
     } catch (err) {
       t.remove();
       if (err.status === 401) {          // chat expired: ask to start again, keep the question
@@ -190,7 +285,8 @@
       await start(pass.value);
       pass.value = "";
       const q = pending; pending = "";
-      if (q) ask(q);
+      const f = pendingForm; pendingForm = null;
+      if (q) ask(q); else if (f) showForm(f.type, f.opts);
     } catch (err) {
       gateErr.textContent = err.status === 401 ? "That passcode isn't right." : err.message;
     } finally { passBtn.disabled = false; }
@@ -223,6 +319,7 @@
   fetch("/api/health").then((r) => r.json()).then((h) => { needsPasscode = !!h.passcode_required; }).catch(() => {});
 
   window.Sahil = {
+    form(type) { setOpen(true); showForm(type); },
     open(q) {
       setOpen(true);
       if (!q) return;

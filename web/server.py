@@ -27,7 +27,7 @@ from pydantic import BaseModel
 import config
 from agent.sahil import Sahil
 from rag.document_loader import load_help_docs
-from support.ticket_manager import TicketManager
+from support.ticket_manager import CATEGORIES, TicketError, TicketManager
 
 log = logging.getLogger("bussafar.web")
 STATIC = Path(__file__).resolve().parent / "static"
@@ -156,7 +156,12 @@ def help_payload() -> dict:
             for c in chunks if c.kind == "faq"]
     policies = [{"id": c.chunk_id, "title": c.title, "lines": c.text.splitlines()[1:]}
                 for c in chunks if c.kind == "policy"]
-    return {"topics": [t for t, _ in TOPICS], "faqs": faqs, "policies": policies}
+    categories = [{"id": k, "label": v} for k, v in CATEGORIES.items() if k not in ("unresolved_query",)]
+    return {"topics": [t for t, _ in TOPICS], "faqs": faqs, "policies": policies, "ticket_categories": categories}
+
+
+# Which in-chat form to show after a reply, so the customer fills fields instead of typing them.
+FORM_FOR_FLAG = {"booking_need_pnr": "booking", "booking_need_phone": "booking_phone", "ticket_need_id": "ticket_status"}
 
 
 def default_agent_factory():
@@ -177,6 +182,13 @@ def default_agent_factory():
 
 class UnlockIn(BaseModel):
     passcode: str = ""
+
+
+class TicketIn(BaseModel):
+    session: str
+    category: str = "other"
+    description: str = ""
+    pnr: str = ""
 
 
 class ChatIn(BaseModel):
@@ -245,8 +257,45 @@ def create_app(agent_factory=None) -> FastAPI:
                         "amount_inr")}
         log.info('{"event":"chat_turn","ms":%d,"flags":%s,"tickets":%s,"sources":%d}',
                  (time.time() - started) * 1000, r.flags, r.ticket_ids, len(r.sources))
-        return {"text": r.text, "sources": r.sources, "ticket_ids": r.ticket_ids, "booking": booking,
+        form = next((FORM_FOR_FLAG[f] for f in r.flags if f in FORM_FOR_FLAG), None)
+        if form == "booking_phone":
+            form = {"type": "booking", "pnr": agent.pending_pnr or ""}
+        elif form:
+            form = {"type": form}
+        return {"text": r.text, "sources": r.sources, "ticket_ids": r.ticket_ids, "booking": booking, "form": form,
                 "emergency": "emergency" in r.flags}
+
+    @app.post("/api/ticket")
+    def contact_person(body: TicketIn, request: Request):
+        """The in-chat 'Contact a person' form. Same one-ticket-per-chat rule as the chat itself."""
+        limiter.check("chat", visitor(request), CHAT_LIMIT)
+        agent = sessions().take_turn(body.session)
+        if agent is None:
+            raise HTTPException(401, "Your chat expired. Please start a new chat.")
+        desc = " ".join(body.description.split())[: config.MAX_INPUT_CHARS]
+        if len(desc) < 5:
+            raise HTTPException(400, "Please describe the issue before creating a ticket.")
+        category = body.category if body.category in CATEGORIES else "other"
+        existing = agent._open_session_ticket()
+        if existing and category != "safety":
+            text = (f"You already have an open ticket, {existing}, so I haven't created another one. "
+                    f"{config.TICKET_REPLY_PROMISE}")
+            agent._remember(f"[Contact form] {desc}", text)
+            return {"text": text, "ticket_ids": [], "existing": existing}
+        try:
+            tid = agent.create_manual_ticket(desc, category, body.pnr.strip() or None)
+        except TicketError as exc:
+            raise HTTPException(400, str(exc))
+        if category == "safety":
+            agent.safety_ticket = agent.safety_ticket or tid
+        else:
+            agent.session_tickets.setdefault(category, tid)
+        text = f"I've raised ticket {tid} for you. {config.TICKET_REPLY_PROMISE}"
+        if category == "safety":
+            text = "If you are in danger, please call 112 right away and use the SOS button in the app. " + text
+        agent._remember(f"[Contact form] {desc}", text)
+        log.info('{"event":"contact_form","category":"%s","ticket":"%s"}', category, tid)
+        return {"text": text, "ticket_ids": [tid], "emergency": category == "safety"}
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException):

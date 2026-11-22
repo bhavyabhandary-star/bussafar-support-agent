@@ -121,3 +121,31 @@ def test_signed_session_survives_a_fresh_instance(tickets, monkeypatch):
     assert r.status_code == 200
     forged = sid[:-4] + "abcd"
     assert fresh.post("/api/chat", json={"session": forged, "message": "hi"}).status_code == 401
+
+
+def test_help_lists_ticket_categories_for_the_contact_form(client):
+    cats = {c["id"] for c in client.get("/api/help").json()["ticket_categories"]}
+    assert {"safety", "refund_dispute", "other"} <= cats and "unresolved_query" not in cats
+
+
+def test_chat_asks_for_the_booking_form(client):
+    s = unlock(client)
+    d = client.post("/api/chat", json={"session": s, "message": "I want to check my booking status"}).json()
+    assert d["form"] == {"type": "booking"}
+    d = client.post("/api/chat", json={"session": s, "message": "My PNR is BS558954"}).json()
+    assert d["form"] == {"type": "booking", "pnr": "BS558954"}
+
+
+def test_contact_form_creates_one_ticket_per_chat(client):
+    s = unlock(client)
+    assert client.post("/api/ticket", json={"session": s, "description": "hi"}).status_code == 400
+    assert client.post("/api/ticket", json={"session": "bad", "description": "My bag is lost"}).status_code == 401
+    d = client.post("/api/ticket", json={"session": s, "category": "lost_item",
+                                         "description": "Left my bag on the bus", "pnr": "BS558954"}).json()
+    assert len(d["ticket_ids"]) == 1 and d["ticket_ids"][0] in d["text"] and not d["emergency"]
+    again = client.post("/api/ticket", json={"session": s, "category": "complaint",
+                                             "description": "Still waiting for help"}).json()
+    assert again["ticket_ids"] == [] and again["existing"] == d["ticket_ids"][0]
+    sos = client.post("/api/ticket", json={"session": s, "category": "safety",
+                                           "description": "The driver is driving dangerously"}).json()
+    assert sos["emergency"] and "112" in sos["text"] and len(sos["ticket_ids"]) == 1

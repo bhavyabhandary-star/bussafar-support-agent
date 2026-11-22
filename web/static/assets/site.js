@@ -6,6 +6,8 @@
 
   // Any [data-ask] opens Sahil, sending its question if it has one.
   document.addEventListener("click", (e) => {
+    const f = e.target.closest("[data-form]");
+    if (f) { e.preventDefault(); window.Sahil.form(f.getAttribute("data-form")); return; }
     const b = e.target.closest("[data-ask]");
     if (b) { e.preventDefault(); window.Sahil.open(b.getAttribute("data-ask") || ""); }
   });
