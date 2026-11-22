@@ -21,7 +21,7 @@ from typing import Any, Protocol
 import config
 from agent import guardrails
 from agent.prompts import SYSTEM_PROMPT, build_user_turn
-from booking.booking_lookup import format_booking
+from booking.booking_lookup import normalize_pnr, format_booking
 from booking.booking_lookup import get_booking_status as lookup_booking
 from rag.retrieval import RetrievedChunk, format_context
 from support.ticket_manager import CATEGORIES, TicketError, TicketManager
@@ -152,6 +152,15 @@ class SahilResponse:
 
 _PNR_IN_TEXT = re.compile(r"\b(BS\s?\d{6})\b", re.IGNORECASE)
 _LAST4_IN_TEXT = re.compile(r"(?<![\dA-Za-z])(\d{4})(?!\d)")
+_ONLY_LAST4 = re.compile(
+    r"^\s*(?:it'?s|its|my|the|last\s*(?:4|four)(?:\s*digits)?|phone|number|ends?\s*(?:in|with)|ending\s*(?:in|with)?"
+    r"|is|are|:|-|\s)*\d{4}\s*[.!]?\s*$", re.IGNORECASE)
+_ONLY_PNR = re.compile(r"^\s*(?:pnr|it'?s|my pnr is|:|\s)*BS\s?\d{6}\s*[.!]?\s*$", re.IGNORECASE)
+_STATUS_REQUEST = re.compile(
+    r"\b(?:(?:check|show|tell me|know|find|look up|track)\b.{0,20}\bmy\s+(?:booking|pnr|reservation)"
+    r"|(?:my|the)\s+(?:booking|ticket|pnr|reservation)\s+(?:status|details)"
+    r"|status\s+of\s+my\s+(?:booking|ticket|pnr|reservation|trip|bus))\b", re.IGNORECASE)
+_HOW_TO = re.compile(r"\bhow (?:do|can|should) i\b|\bwhere (?:do|can) i\b", re.IGNORECASE)
 _BOOKING_INTENT = re.compile(r"\b(booking|pnr|status|ticket|check|phone|ends?|last)\b", re.IGNORECASE)
 
 
@@ -210,6 +219,8 @@ class Sahil:
         self.ticket_ids: set[str] = set()
         self.safety_ticket: str | None = None
         self.session_tickets: dict[str, str] = {}
+        self.pending_pnr: str | None = None  # PNR given, waiting for the phone digits
+        self.awaiting_pnr = False
 
     # -- helpers --------------------------------------------------------
     def _remember(self, user: str, reply: str) -> None:
@@ -299,33 +310,61 @@ class Sahil:
         return SahilResponse(text, ticket_ids=[tid], flags=["escalation"])
 
     def _direct_booking_lookup(self, msg: str) -> SahilResponse | None:
-        """Handle "PNR + last 4 digits" messages in code, without the model."""
-        pnr_m = _PNR_IN_TEXT.search(msg)
-        if not pnr_m:
-            return None
-        rest = msg[: pnr_m.start()] + " " + msg[pnr_m.end():]
-        digits = _LAST4_IN_TEXT.findall(rest)
+        """Handle booking-status requests in code, without the model.
+
+        Verification needs the PNR and the last 4 phone digits in the same chat. Sahil asks for
+        whichever is missing and remembers a PNR it was given until the digits arrive.
+        """
+        pnrs = list(dict.fromkeys(normalize_pnr(p) for p in _PNR_IN_TEXT.findall(msg)))
+        if not pnrs:
+            if self.pending_pnr and _ONLY_LAST4.match(msg):
+                pnrs = [self.pending_pnr]
+                digits = _LAST4_IN_TEXT.findall(msg)
+            elif _STATUS_REQUEST.search(msg) and not _HOW_TO.search(msg):
+                self.awaiting_pnr = True
+                return SahilResponse(
+                    "I can check that for you. Please share your PNR (BS followed by 6 digits) and "
+                    "the last 4 digits of the phone number registered on the booking.",
+                    flags=["booking_need_pnr"])
+            else:
+                return None
+        else:
+            rest = _PNR_IN_TEXT.sub(" ", msg)
+            digits = _LAST4_IN_TEXT.findall(rest)
         if len(digits) != 1:
-            if not digits and _BOOKING_INTENT.search(msg):
+            if not digits and (_BOOKING_INTENT.search(msg) or self.awaiting_pnr or _ONLY_PNR.match(msg)):
+                self.pending_pnr = pnrs[0] if len(pnrs) == 1 else None
                 return SahilResponse(
                     "I can check that for you. Please share the last 4 digits of the phone "
                     "number registered on this booking.", flags=["booking_need_phone"])
             return None
+        self.pending_pnr = None
+        self.awaiting_pnr = False
         if self.failed_lookups >= config.MAX_FAILED_LOOKUPS:
             return SahilResponse(
                 "I'm sorry, there have been too many unsuccessful attempts, so I can't check "
                 "bookings in this chat. Please raise a support ticket and a person will help you.",
                 flags=["booking_locked"])
-        result = lookup_booking(pnr_m.group(1), digits[0], self.bookings_path)
-        if not result["found"]:
-            if result["error"] == "not_found":
+        # Several PNRs in one message: only a PNR whose own row matches the digits is shown.
+        results = [lookup_booking(p, digits[0], self.bookings_path) for p in pnrs]
+        found = [r for r in results if r["found"]]
+        if not found:
+            result = results[0]
+            if any(r["error"] == "not_found" for r in results):
                 self.failed_lookups += 1
             return SahilResponse(result["message"], flags=["booking_not_found"])
-        b = result["booking"]
+        b = found[0]["booking"]
         text = f"Here are your booking details. {format_booking(b)}"
-        if b["status"].lower() == "cancelled":
-            text += (" If you have a problem with this cancellation or its refund, I can raise a "
-                     "ticket for a person to look into it.")
+        status = b["status"].lower()
+        if status == "cancelled":
+            text += (" This booking is cancelled. If you need help with this cancellation or its "
+                     "refund, I can raise a ticket for a person to look into it.")
+        elif status == "completed":
+            text += " This trip is completed."
+        elif status == "confirmed":
+            text += " Your booking is confirmed."
+        if len(pnrs) > 1:
+            text += " I can only show a booking whose PNR matches the phone digits you shared."
         return SahilResponse(text, booking=b, flags=["booking_found"])
 
     # -- public API -----------------------------------------------------

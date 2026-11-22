@@ -1,7 +1,7 @@
 {
  "meta": {
-  "started": "2026-11-22 06:01",
-  "finished": "2026-11-22 06:01",
+  "started": "2026-11-22 06:25",
+  "finished": "2026-11-22 06:25",
   "model": "gemini-3.5-flash-lite",
   "mode": "offline"
  },
@@ -1095,7 +1095,7 @@
    "Expected result": "Booking details returned",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Here are your booking details. PNR BS561084 for Meera Nair: Hyderabad to Vijayawada on 25-Nov-2026, seat U10. Status: Confirmed. Amount paid: ₹650.  [check: status=Confirmed]",
+   "Actual result": "Here are your booking details. PNR BS561084 for Meera Nair: Hyderabad to Vijayawada on 25-Nov-2026, seat U10. Status: Confirmed. Amount paid: ₹650. Your booking is confirmed.  [check: status=Confirmed]",
    "Status": "Pass"
   },
   {
@@ -1108,7 +1108,7 @@
    "Expected result": "Correct details, Cancelled",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Here are your booking details. PNR BS532254 for Arjun Reddy: Chennai to Bengaluru on 28-Nov-2026, seat S30. Status: Cancelled. Amount paid: ₹900. If you have a problem with this cancellation or its refund, I can raise a ticket for a person to look into it.  [check: status=Cancelled]",
+   "Actual result": "Here are your booking details. PNR BS532254 for Arjun Reddy: Chennai to Bengaluru on 28-Nov-2026, seat S30. Status: Cancelled. Amount paid: ₹900. This booking is cancelled. If you need help with this cancellation or its refund, I can raise a ticket for a person to look into it.  [check: status=Cancelled]",
    "Status": "Pass"
   },
   {
@@ -1121,7 +1121,7 @@
    "Expected result": "Correct details, Completed",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Here are your booking details. PNR BS558954 for Gaurav Thakur: Bengaluru to Goa on 17-Nov-2026, seat L29. Status: Completed. Amount paid: ₹1450.  [check: status=Completed]",
+   "Actual result": "Here are your booking details. PNR BS558954 for Gaurav Thakur: Bengaluru to Goa on 17-Nov-2026, seat L29. Status: Completed. Amount paid: ₹1450. This trip is completed.  [check: status=Completed]",
    "Status": "Pass"
   },
   {
@@ -1134,7 +1134,7 @@
    "Expected result": "Correct details, Confirmed",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Here are your booking details. PNR BS562013 for Siddharth Jain: Pune to Goa on 25-Nov-2026, seat L15. Status: Confirmed. Amount paid: ₹1200.  [check: status=Confirmed]",
+   "Actual result": "Here are your booking details. PNR BS562013 for Siddharth Jain: Pune to Goa on 25-Nov-2026, seat L15. Status: Confirmed. Amount paid: ₹1200. Your booking is confirmed.  [check: status=Confirmed]",
    "Status": "Pass"
   },
   {
@@ -1355,7 +1355,7 @@
    "Expected result": "Normalised; correct match only",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Here are your booking details. PNR BS561084 for Meera Nair: Hyderabad to Vijayawada on 25-Nov-2026, seat U10. Status: Confirmed. Amount paid: ₹650.  [check: pnr matched]",
+   "Actual result": "Here are your booking details. PNR BS561084 for Meera Nair: Hyderabad to Vijayawada on 25-Nov-2026, seat U10. Status: Confirmed. Amount paid: ₹650. Your booking is confirmed.  [check: pnr matched]",
    "Status": "Pass"
   },
   {
@@ -1368,7 +1368,7 @@
    "Expected result": "Status Cancelled",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Here are your booking details. PNR BS582459 for Neha Patil: Kochi to Bengaluru on 21-Nov-2026, seat 34. Status: Cancelled. Amount paid: ₹1250. If you have a problem with this cancellation or its refund, I can raise a ticket for a person to look into it.  [check: status=Cancelled]",
+   "Actual result": "Here are your booking details. PNR BS582459 for Neha Patil: Kochi to Bengaluru on 21-Nov-2026, seat 34. Status: Cancelled. Amount paid: ₹1250. This booking is cancelled. If you need help with this cancellation or its refund, I can raise a ticket for a person to look into it.  [check: status=Cancelled]",
    "Status": "Pass"
   },
   {
@@ -1563,7 +1563,7 @@
    "Expected result": "Retrieves booking details",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Here are your booking details. PNR BS597452 for Nikhil Chauhan: Kolkata to Siliguri on 26-Nov-2026, seat 18. Status: Confirmed. Amount paid: ₹1300.  [check: status=Confirmed]",
+   "Actual result": "Here are your booking details. PNR BS597452 for Nikhil Chauhan: Kolkata to Siliguri on 26-Nov-2026, seat 18. Status: Confirmed. Amount paid: ₹1300. Your booking is confirmed.  [check: status=Confirmed]",
    "Status": "Pass"
   },
   {
@@ -1743,7 +1743,7 @@
    "Test steps": "Send customer question",
    "Test data": "test passcode (not the real one)",
    "Expected result": "Response displayed",
-   "Actual result": "Here are your booking details. PNR BS558954 for Gaurav Thakur: Bengaluru to Goa on 17-Nov-2026, seat L29. Status: Completed. Amount paid: ₹1450.",
+   "Actual result": "Here are your booking details. PNR BS558954 for Gaurav Thakur: Bengaluru to Goa on 17-Nov-2026, seat L29. Status: Completed. Amount paid: ₹1450. This trip is completed.",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "High"
