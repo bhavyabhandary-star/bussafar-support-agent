@@ -1061,13 +1061,13 @@ def web_cases() -> list[dict]:
     def contact_create():
         state["s"] = unlock()
         d = c.post("/api/ticket", json={"session": state["s"], "category": "lost_item",
-                                        "description": "Left my black backpack on the bus", "pnr": pnr}).json()
+                                        "description": "Left my black backpack on the bus", "pnr": pnr, "last4": LAST4[pnr]}).json()
         state["tid"] = (d.get("ticket_ids") or [None])[0]
         return bool(state["tid"]) and state["tid"] in d["text"] and not d["emergency"], d["text"]
 
     def contact_again():
         d = c.post("/api/ticket", json={"session": state["s"], "category": "complaint",
-                                        "description": "Nobody has called me yet", "pnr": pnr}).json()
+                                        "description": "Nobody has called me yet", "pnr": pnr, "last4": LAST4[pnr]}).json()
         return d["ticket_ids"] == [] and d.get("existing") == state["tid"], d["text"]
 
     def contact_safety():
@@ -1080,12 +1080,12 @@ def web_cases() -> list[dict]:
         return r.status_code == 400 and "PNR" in r.json()["error"], f"HTTP {r.status_code}: {r.json().get('error')}"
 
     def contact_unknown_pnr():
-        r = c.post("/api/ticket", json={"session": unlock(), "category": "lost_item", "pnr": "BS000000",
+        r = c.post("/api/ticket", json={"session": unlock(), "category": "lost_item", "pnr": pnr, "last4": "0000",
                                         "description": "Left my bag on the bus"})
         return r.status_code == 400 and "couldn't find a booking" in r.json()["error"], f"HTTP {r.status_code}: {r.json().get('error')}"
 
     def contact_same_pnr_other_chat():
-        d = c.post("/api/ticket", json={"session": unlock(), "category": "complaint", "pnr": pnr,
+        d = c.post("/api/ticket", json={"session": unlock(), "category": "complaint", "pnr": pnr, "last4": LAST4[pnr],
                                         "description": "Nobody called me back"}).json()
         return d["ticket_ids"] == [] and d.get("existing") == state["tid"], d["text"]
 
@@ -1118,8 +1118,8 @@ def web_cases() -> list[dict]:
         add("WEB-014", "Contact form creates a ticket", "Lost item + description", "Ticket ID shown with the 24-hour promise", "High", contact_create)
         add("WEB-015", "Second contact form, same chat", "Complaint", "Returns the open ticket; no duplicate", "High", contact_again)
         add("WEB-016", "Contact form, safety issue", "Safety + description", "Own ticket plus 'call 112' advice", "Critical", contact_safety)
-        add("WEB-021", "Contact form without a PNR", "Lost item, no PNR", "Asks for the PNR (400); safety is the only exception", "High", contact_needs_pnr)
-        add("WEB-022", "Contact form with an unknown PNR", "BS000000", "Says no booking has that PNR; no ticket", "High", contact_unknown_pnr)
+        add("WEB-021", "Contact form without a PNR", "Lost item, no PNR", "Asks for the PNR and phone digits (400); safety is the only exception", "High", contact_needs_pnr)
+        add("WEB-022", "Contact form, PNR with wrong phone digits", f"{pnr} + 0000", "Says no booking matches; no ticket; locks after 5 tries", "High", contact_unknown_pnr)
         add("WEB-023", "Same PNR from another chat", f"{pnr}, new chat", "Returns the ticket already open for that PNR", "High", contact_same_pnr_other_chat)
         add("WEB-024", "Track ticket: real ID", "lower-case ticket ID", "Accepted and tidied to TKT-xxxx", "High", ticket_check_real)
         add("WEB-025", "Track ticket: unknown ID", "TKT-9999", "Says there is no such ticket (404); nothing else revealed", "High", ticket_check_unknown)
@@ -1294,7 +1294,8 @@ CLARIFICATIONS = [
     ("In-chat forms on the website",
      "The website chat shows small forms instead of asking the customer to type details: PNR plus last 4 phone "
      "digits (shown as •••• in the chat), Ticket ID, and Contact a person (issue type, PNR, description). "
-     "The contact form's PNR is required (except for a safety report) and must be a real booking; an open ticket "
+     "The contact form's PNR and last 4 phone digits are required (except for a safety report) and must match a "
+     "real booking, the same check as a booking lookup, with 5 tries per chat; an open ticket "
      "for the same PNR is reused instead of making a duplicate. The Ticket ID form only accepts a ticket that exists. "
      "They open from the chips, and by themselves when Sahil asks for a PNR, phone digits or ticket ID, or offers "
      "a person. The contact form uses the same one-ticket-per-chat rule as the chat. The booking and ticket forms "

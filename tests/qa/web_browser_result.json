@@ -13,11 +13,11 @@
   "id": "WEB-019",
   "scenario": "Contact form in the browser",
   "data": "Lost item + description",
-  "expected": "Must pick an issue type and a real PNR; ticket ID shown after Create ticket",
+  "expected": "Must pick an issue type and a PNR + phone digits that match; ticket ID shown after Create ticket",
   "severity": "High",
   "steps": "Tap Talk to a person, submit empty, then fill and submit",
   "status": "Pass",
-  "actual": "Empty form says 'Please choose an issue type.'; unknown PNR says 'We couldn't find a booking with PNR BS000000. Please check it and try again.'; with a real PNR a ticket ID is shown"
+  "actual": "Empty form says 'Please choose an issue type.'; wrong digits say 'I couldn't find a booking that matches that PNR and phone number.'; with a real PNR a ticket ID is shown"
  },
  {
   "id": "WEB-020",

@@ -56,18 +56,20 @@ const results = [];
     const err1 = await card.locator(".sahil-err").textContent();
     await card.locator("select").selectOption("lost_item");
     await card.locator("textarea").fill("I left my black backpack on the bus");
-    await card.locator("input").fill("BS000000");
+    await card.locator("input").nth(0).fill("BS597452");
+    await card.locator("input").nth(1).fill("0000");
     await card.locator('button[type="submit"]').click();
     await page.waitForTimeout(800);
     const err2 = await card.locator(".sahil-err").textContent();
-    await card.locator("input").fill("bs 597452");
+    await card.locator("input").nth(0).fill("bs 597452");
+    await card.locator("input").nth(1).fill(LAST4.BS597452);
     await card.locator('button[type="submit"]').click();
     await page.waitForSelector("text=/TKT-\\d+/", { timeout: 8000 });
-    const ok = /choose an issue type/i.test(err1) && /couldn't find a booking/i.test(err2);
-    return { ok, note: `Empty form says '${err1}'; unknown PNR says '${err2}'; with a real PNR a ticket ID is shown` };
+    const ok = /choose an issue type/i.test(err1) && /couldn't find a booking that matches/i.test(err2);
+    return { ok, note: `Empty form says '${err1}'; wrong digits say '${err2}'; with a real PNR a ticket ID is shown` };
   });
   results.push({ id: "WEB-019", scenario: "Contact form in the browser", data: "Lost item + description",
-    expected: "Must pick an issue type and a real PNR; ticket ID shown after Create ticket", severity: "High",
+    expected: "Must pick an issue type and a PNR + phone digits that match; ticket ID shown after Create ticket", severity: "High",
     steps: "Tap Talk to a person, submit empty, then fill and submit", status: c.ok ? "Pass" : "Fail", actual: c.actual });
 
   const m = await run("mobile", { width: 375, height: 812 }, async (page) => {

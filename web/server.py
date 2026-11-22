@@ -29,7 +29,7 @@ from agent.sahil import Sahil
 from rag.document_loader import load_help_docs
 import re
 
-from booking.booking_lookup import load_bookings, normalize_pnr
+from booking.booking_lookup import get_booking_status, normalize_pnr
 from support.ticket_manager import CATEGORIES, TicketError, TicketManager, _normalize_ticket_id
 
 log = logging.getLogger("bussafar.web")
@@ -193,6 +193,7 @@ class TicketIn(BaseModel):
     category: str = "other"
     description: str = ""
     pnr: str = ""
+    last4: str = ""
 
 
 class TicketCheckIn(BaseModel):
@@ -291,14 +292,20 @@ def create_app(agent_factory=None) -> FastAPI:
         if body.category not in CATEGORIES or body.category == "unresolved_query":
             raise HTTPException(400, "Please choose an issue type.")
         category = body.category
-        # PNR is required (a safety report may skip it so nobody in danger is held up),
-        # must look like a BusSafar PNR, and must be a real booking.
+        # PNR + last 4 phone digits are required (a safety report may skip them so nobody in danger
+        # is held up) and must match a real booking, the same check as a booking lookup. The digits
+        # stop anyone raising tickets on someone else's booking or probing which PNRs exist.
         pnr = normalize_pnr(body.pnr)
         if pnr or category != "safety":
             if not PNR_RE.match(pnr):
                 raise HTTPException(400, "Please enter your PNR: BS followed by 6 digits, like BS123456.")
-            if pnr not in set(load_bookings(agent.bookings_path)["pnr"]):
-                raise HTTPException(400, f"We couldn't find a booking with PNR {pnr}. Please check it and try again.")
+            if not re.fullmatch(r"\d{4}", body.last4.strip()):
+                raise HTTPException(400, "Please enter the last 4 digits of the phone number on the booking.")
+            if agent.failed_lookups >= config.MAX_FAILED_LOOKUPS:
+                raise HTTPException(429, "Too many unsuccessful attempts in this chat. Please start a new chat later.")
+            if not get_booking_status(pnr, body.last4.strip(), agent.bookings_path)["found"]:
+                agent.failed_lookups += 1
+                raise HTTPException(400, "I couldn't find a booking that matches that PNR and phone number.")
         existing = agent._open_session_ticket()
         if not existing and pnr and category != "safety":
             # One open ticket per booking too: reuse a ticket already open for this PNR.
@@ -337,7 +344,11 @@ def create_app(agent_factory=None) -> FastAPI:
         tid = _normalize_ticket_id(body.ticket_id)
         if not TICKET_RE.match(tid):
             raise HTTPException(400, "Ticket IDs look like TKT-1001.")
+        misses = getattr(agent, "failed_ticket_checks", 0)
+        if misses >= config.MAX_FAILED_LOOKUPS:
+            raise HTTPException(429, "Too many unknown ticket IDs in this chat. Please start a new chat later.")
         if agent.tickets.get_ticket(tid) is None:
+            agent.failed_ticket_checks = misses + 1
             raise HTTPException(404, f"There's no ticket {tid}. Please check the ID on your ticket message.")
         return {"ticket_id": tid}
 

@@ -231,22 +231,30 @@
       pnr.style.textTransform = "uppercase";
       const desc = el("textarea");
       desc.rows = 3; desc.maxLength = 1000; desc.placeholder = "What happened?";
+      const last4 = textInput({ type: "password", placeholder: "••••", maxLength: 4, inputMode: "numeric", autocomplete: "off" });
       const pnrField = field("PNR", pnr);
-      // A safety report must never be held up, so only there the PNR may be left empty.
+      const digitsField = field("Last 4 digits of phone", last4);
+      // A safety report must never be held up, so only there the booking details may be left empty.
       sel.addEventListener("change", () => {
-        pnrField.firstChild.textContent = sel.value === "safety" ? "PNR (optional for safety)" : "PNR";
+        const safety = sel.value === "safety";
+        pnrField.firstChild.textContent = safety ? "PNR (optional for safety)" : "PNR";
+        digitsField.firstChild.textContent = safety ? "Last 4 digits of phone (optional for safety)" : "Last 4 digits of phone";
       });
-      fields = [field("Issue type", sel), pnrField, field("Describe the issue", desc)];
+      fields = [field("Issue type", sel), pnrField, digitsField, field("Describe the issue", desc)];
       go.textContent = "Create ticket";
       submit = async () => {
         if (!sel.value) return "Please choose an issue type.";
         const p = pnr.value.replace(/\s+/g, "").toUpperCase();
-        if ((p || sel.value !== "safety") && !/^BS\d{6}$/.test(p)) return "Please enter your PNR: BS followed by 6 digits, like BS123456.";
+        const d4 = last4.value.trim();
+        if (p || sel.value !== "safety") {
+          if (!/^BS\d{6}$/.test(p)) return "Please enter your PNR: BS followed by 6 digits, like BS123456.";
+          if (!/^\d{4}$/.test(d4)) return "Please enter the last 4 digits of the phone number on the booking.";
+        }
         if (desc.value.trim().length < 5) return "Please describe the issue before creating a ticket.";
         const label = sel.options[sel.selectedIndex].text;
         let d;
         try {
-          d = await post("/api/ticket", { session, category: sel.value, description: desc.value, pnr: p });
+          d = await post("/api/ticket", { session, category: sel.value, description: desc.value, pnr: p, last4: d4 });
         } catch (e2) { return e2.message; }   // stays in the form, e.g. a PNR with no booking
         const shown = `${label}${p ? " · " + p : ""}: ${desc.value.trim()}`;
         bubble("me", shown);

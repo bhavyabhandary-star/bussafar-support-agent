@@ -1,9 +1,9 @@
 {
  "meta": {
   "started": "2026-11-22 13:19",
-  "finished": "2026-11-22 16:13",
+  "finished": "2026-11-22 16:18",
   "model": "gemini-3.5-flash-lite",
-  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline); WEB re-run 2026-11-22 16:12 (offline); WEB re-run 2026-11-22 16:13 (offline)"
+  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline); WEB re-run 2026-11-22 16:12 (offline); WEB re-run 2026-11-22 16:13 (offline); WEB re-run 2026-11-22 16:18 (offline)"
  },
  "rows": [
   {
@@ -2574,7 +2574,7 @@
    "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
    "Test steps": "Contact form without a PNR",
    "Test data": "Lost item, no PNR",
-   "Expected result": "Asks for the PNR (400); safety is the only exception",
+   "Expected result": "Asks for the PNR and phone digits (400); safety is the only exception",
    "Actual result": "HTTP 400: Please enter your PNR: BS followed by 6 digits, like BS123456.",
    "Status": "Pass",
    "Defect ID": "",
@@ -2583,12 +2583,12 @@
   {
    "Test Case ID": "WEB-022",
    "Module": "Website chat",
-   "Test scenario": "Contact form with an unknown PNR",
+   "Test scenario": "Contact form, PNR with wrong phone digits",
    "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
-   "Test steps": "Contact form with an unknown PNR",
-   "Test data": "BS000000",
-   "Expected result": "Says no booking has that PNR; no ticket",
-   "Actual result": "HTTP 400: We couldn't find a booking with PNR BS000000. Please check it and try again.",
+   "Test steps": "Contact form, PNR with wrong phone digits",
+   "Test data": "BS597452 + 0000",
+   "Expected result": "Says no booking matches; no ticket; locks after 5 tries",
+   "Actual result": "HTTP 400: I couldn't find a booking that matches that PNR and phone number.",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "High"
@@ -2665,8 +2665,8 @@
    "Preconditions": "Headless Chromium, local server, no Gemini key",
    "Test steps": "Tap Talk to a person, submit empty, then fill and submit",
    "Test data": "Lost item + description",
-   "Expected result": "Must pick an issue type and a real PNR; ticket ID shown after Create ticket",
-   "Actual result": "Empty form says 'Please choose an issue type.'; unknown PNR says 'We couldn't find a booking with PNR BS000000. Please check it and try again.'; with a real PNR a ticket ID is shown",
+   "Expected result": "Must pick an issue type and a PNR + phone digits that match; ticket ID shown after Create ticket",
+   "Actual result": "Empty form says 'Please choose an issue type.'; wrong digits say 'I couldn't find a booking that matches that PNR and phone number.'; with a real PNR a ticket ID is shown",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "High"
