@@ -14,7 +14,9 @@ import streamlit as st
 import config
 from agent.sahil import GeminiLLM, LLMError, Sahil
 from booking.booking_lookup import format_booking, get_booking_status
-from support.ticket_manager import CATEGORIES, TicketError, TicketManager
+from support.ticket_manager import CATEGORIES, STATUS_MEANINGS, STATUSES, TicketError, TicketManager
+
+STATUS_BADGE = {"Pending": "🟡 Pending", "In progress": "🔵 In progress", "Done": "✅ Done"}
 
 st.set_page_config(page_title="BusSafar Support", page_icon="🚌", layout="centered")
 
@@ -158,13 +160,41 @@ def sidebar(agent: Sahil) -> None:
                 except TicketError as exc:
                     st.error(f"Ticket could not be created: {exc}")
 
-        st.markdown("### Open tickets")
-        rows = ticket_manager().list_tickets(status="open")
+        st.markdown("### Check a ticket")
+        with st.form("ticket_status_form", clear_on_submit=False):
+            q_tid = st.text_input("Ticket ID", placeholder="TKT-1001", max_chars=12)
+            look = st.form_submit_button("Check ticket")
+        if look:
+            row = ticket_manager().get_ticket(q_tid)
+            if row:
+                st.info(f"{row['ticket_id']}: {STATUS_BADGE.get(row['status'], row['status'])}. "
+                        f"{STATUS_MEANINGS[row['status']]}"
+                        + (f" Note: {row['status_note']}" if row["status_note"] else ""))
+            else:
+                st.error("No ticket with that ID. Please check it and try again.")
+
+        st.markdown("### Support tickets")
+        rows = ticket_manager().list_tickets()
         if rows:
-            df = pd.DataFrame(rows)[["ticket_id", "category", "priority", "created_at"]]
+            counts = " · ".join(f"{STATUS_BADGE[s]}: {sum(r['status'] == s for r in rows)}" for s in STATUSES)
+            st.caption(counts)
+            df = pd.DataFrame(rows)[["ticket_id", "status", "category", "priority", "updated_at"]]
             st.dataframe(df.iloc[::-1], hide_index=True, use_container_width=True)
+            with st.expander("Staff: update a ticket"):
+                with st.form("staff_status_form", clear_on_submit=True):
+                    s_tid = st.selectbox("Ticket", [r["ticket_id"] for r in reversed(rows)])
+                    s_status = st.selectbox("New status", STATUSES)
+                    s_note = st.text_input("Note (optional)", max_chars=300)
+                    save = st.form_submit_button("Save status")
+                if save:
+                    try:
+                        ticket_manager().update_status(s_tid, s_status, s_note, changed_by="staff (sidebar)")
+                        st.success(f"{s_tid} is now {s_status}.")
+                        st.rerun()
+                    except TicketError as exc:
+                        st.error(str(exc))
         else:
-            st.caption("No open tickets yet.")
+            st.caption("No tickets yet.")
         st.caption("Tickets reset when the hosted demo restarts.")
 
         st.divider()

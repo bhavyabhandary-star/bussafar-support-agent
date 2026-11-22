@@ -9,3 +9,5 @@ __pycache__/
 venv/
 .pytest_cache/
 env.txt
+tickets_history.csv
+tickets.csv.tmp

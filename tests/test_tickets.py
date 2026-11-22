@@ -15,7 +15,7 @@ def test_ticket_has_all_fields(tickets):
     assert t.ticket_id == "TKT-1001"
     row = tickets.get_ticket("TKT-1001")
     assert set(row) == set(FIELDNAMES)
-    assert row["status"] == "open" and row["pnr"] == "BS558954" and row["category"] == "lost_item"
+    assert row["status"] == "Pending" and row["pnr"] == "BS558954" and row["category"] == "lost_item"
     assert row["created_at"] and row["conversation_summary"] == "Customer lost a bag."
 
 
