@@ -72,6 +72,33 @@ def validate_inputs(pnr: object, phone_last4: object) -> tuple[str, str, str | N
     return p, last4, None
 
 
+# Booking (bus ticket) lifecycle, from BusSafar's status definitions.
+BOOKING_STATUS_MEANINGS = {
+    "Pending": "Seats are temporarily reserved awaiting payment confirmation.",
+    "Failed": "Payment did not complete in time or was declined; no ticket is issued and held seats are released.",
+    "Confirmed": "Payment succeeded, seats are locked in, and the ticket reference/PNR is active for travel.",
+    "Cancelled": ("The booking was cancelled by the passenger or operator prior to departure; refund "
+                  "eligibility depends on cancellation rules."),
+    "Refunded": "Applicable money has been returned after a cancellation or trip disruption.",
+    "Completed": "The passenger checked in at boarding and completed the journey.",
+    "No-Show": "The departure passed without passenger boarding, typically forfeiting standard refund rights.",
+}
+_BOOKING_STATUS_ALIASES = {
+    "pending": "Pending", "hold": "Pending", "on hold": "Pending",
+    "failed": "Failed", "expired": "Failed",
+    "confirmed": "Confirmed", "issued": "Confirmed",
+    "cancelled": "Cancelled", "canceled": "Cancelled",
+    "refunded": "Refunded", "partially refunded": "Refunded",
+    "completed": "Completed", "boarded": "Completed",
+    "no-show": "No-Show", "no show": "No-Show", "noshow": "No-Show",
+}
+
+
+def booking_status_meaning(status: object) -> str:
+    key = _BOOKING_STATUS_ALIASES.get(str(status or "").strip().lower())
+    return BOOKING_STATUS_MEANINGS.get(key, "")
+
+
 def get_booking_status(pnr: str, phone_last4: str, path: Path | str = config.BOOKINGS_CSV) -> dict:
     """Look up one booking after verifying PNR + last four phone digits.
 
@@ -102,6 +129,7 @@ def get_booking_status(pnr: str, phone_last4: str, path: Path | str = config.BOO
         "travel_date": row["travel_date"],
         "seat": row["seat"],
         "status": row["status"],
+        "status_meaning": booking_status_meaning(row["status"]),
         "amount_inr": row["amount_inr"],
     }
     return {"found": True, "message": "Booking found.", "booking": booking, "error": None}
@@ -110,6 +138,7 @@ def get_booking_status(pnr: str, phone_last4: str, path: Path | str = config.BOO
 def format_booking(booking: dict) -> str:
     return (
         f"PNR {booking['pnr']} for {booking['passenger_name']}: {booking['route']} on "
-        f"{booking['travel_date']}, seat {booking['seat']}. Status: {booking['status']}. "
-        f"Amount paid: ₹{booking['amount_inr']}."
+        f"{booking['travel_date']}, seat {booking['seat']}. Status: {booking['status']}"
+        + (f" ({booking['status_meaning']})" if booking.get("status_meaning") else "")
+        + f". Amount paid: ₹{booking['amount_inr']}."
     )

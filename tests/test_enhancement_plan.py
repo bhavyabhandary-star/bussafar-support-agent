@@ -91,16 +91,16 @@ def test_b10_prompt_injection_keeps_security(agent):
 
 
 # Phase 4 acceptance (offline parts; live retrieval is in tests/test_live_agent.py)
-def test_p4_all_20_faqs_and_3_policies_in_kb():
+def test_p4_all_20_faqs_and_5_policies_in_kb():
     chunks = load_help_docs(config.HELP_DOCS_FILE)
     assert sum(c.kind == "faq" for c in chunks) == 20
-    assert sum(c.kind == "policy" for c in chunks) == 3
+    assert sum(c.kind == "policy" for c in chunks) == 5  # incl. Booking statuses, Support ticket statuses
 
 
-def test_p4_booking_csv_loads_all_12_records():
+def test_p4_booking_csv_loads_all_16_records():
     assert list(DF.columns) == ["pnr", "passenger_name", "phone_last4", "route",
                                 "travel_date", "seat", "status", "amount_inr"]
-    assert len(DF) == 12
+    assert len(DF) == 16  # 12 from the data sheet + 4 demo rows (Pending, Failed, Refunded, No-Show)
     for pnr, last4 in L4.items():
         assert get_booking_status(pnr, last4)["found"]
 

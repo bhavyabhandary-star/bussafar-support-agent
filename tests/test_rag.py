@@ -17,13 +17,15 @@ EXPECTED_POLICIES = [
     "Cancellation and refund policy",
     "Travel rules",
     "Delays and operator cancellations",
+    "Booking statuses",
+    "Support ticket statuses",
 ]
 
 
-def test_has_all_20_faqs_and_3_policies():
+def test_has_all_20_faqs_and_5_policies():
     assert sum(c.kind == "faq" for c in CHUNKS) == 20
     assert [c.title for c in CHUNKS if c.kind == "policy"] == EXPECTED_POLICIES
-    assert len({c.chunk_id for c in CHUNKS}) == 23
+    assert len({c.chunk_id for c in CHUNKS}) == 25
 
 
 @pytest.mark.parametrize("chunk", CHUNKS, ids=[c.chunk_id for c in CHUNKS])
@@ -58,7 +60,7 @@ def test_faq_without_answer_is_rejected():
 
 def test_index_stores_all_chunks_with_metadata(retriever):
     col = retriever.collection
-    assert col.count() == 23
+    assert col.count() == 25
     got = col.get(ids=["policy-01"], include=["metadatas", "documents"])
     assert got["metadatas"][0]["source"] == "Cancellation and refund policy"
     assert got["metadatas"][0]["kind"] == "policy"
@@ -92,7 +94,7 @@ def test_index_rebuilds_when_help_docs_change(fake_embedder, tmp_path):
     assert ensure_index(fake_embedder, src, d, "col1").metadata["fingerprint"] == fp1
     src.write_text(SOURCE_TEXT.replace("15 minutes", "15 minutes "), encoding="utf-8")
     assert ensure_index(fake_embedder, src, d, "col1").metadata["fingerprint"] != fp1
-    assert get_collection(d, "col1").count() == 23
+    assert get_collection(d, "col1").count() == 25
 
 
 def test_empty_query_returns_nothing(retriever):

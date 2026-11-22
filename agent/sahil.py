@@ -24,7 +24,7 @@ from agent.prompts import SYSTEM_PROMPT, build_user_turn
 from booking.booking_lookup import normalize_pnr, format_booking
 from booking.booking_lookup import get_booking_status as lookup_booking
 from rag.retrieval import RetrievedChunk, format_context
-from support.ticket_manager import CATEGORIES, TicketError, TicketManager
+from support.ticket_manager import CATEGORIES, STATUS_MEANINGS, TicketError, TicketManager
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +58,18 @@ TOOL_DECLARATIONS = [
                 "conversation_summary": {"type": "string", "description": "One or two sentence summary of the conversation"},
             },
             "required": ["customer_message", "reason", "category", "priority"],
+        },
+    },
+    {
+        "name": "get_ticket_status",
+        "description": (
+            "Check the status of a support ticket the customer already has (Pending, In progress or Done). "
+            "Needs the ticket ID, e.g. TKT-1001. Returns only the status and dates, never the ticket text."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {"ticket_id": {"type": "string", "description": "Ticket ID like TKT-1001"}},
+            "required": ["ticket_id"],
         },
     },
 ]
@@ -160,6 +172,13 @@ _STATUS_REQUEST = re.compile(
     r"\b(?:(?:check|show|tell me|know|find|look up|track)\b.{0,20}\bmy\s+(?:booking|pnr|reservation)"
     r"|(?:my|the)\s+(?:booking|ticket|pnr|reservation)\s+(?:status|details)"
     r"|status\s+of\s+my\s+(?:booking|ticket|pnr|reservation|trip|bus))\b", re.IGNORECASE)
+_TICKET_ID_IN_TEXT = re.compile(r"\bTKT[\s-]?\d{4,6}\b", re.IGNORECASE)
+_TICKET_STATUS_WORDS = re.compile(r"\b(status|update|progress|done|resolved|pending|happen|check|any news|where)\b",
+                                  re.IGNORECASE)
+_TICKET_STATUS_REQUEST = re.compile(
+    r"\b(?:status|update)\b.{0,25}\b(?:support|complaint|help)\s+ticket\b"
+    r"|\b(?:support|complaint)\s+ticket\b.{0,25}\b(?:status|update)\b"
+    r"|\bmy\s+ticket\s+(?:id|number)\b", re.IGNORECASE)
 _HOW_TO = re.compile(r"\bhow (?:do|can|should) i\b|\bwhere (?:do|can) i\b", re.IGNORECASE)
 _BOOKING_INTENT = re.compile(r"\b(booking|pnr|status|ticket|check|phone|ends?|last)\b", re.IGNORECASE)
 
@@ -216,6 +235,7 @@ class Sahil:
         self.history_turns = history_turns
         self.history: list[dict] = []  # [{"role": "user"|"model", "text": str}]
         self.failed_lookups = 0
+        self.failed_ticket_lookups = 0
         self.ticket_ids: set[str] = set()
         self.safety_ticket: str | None = None
         self.session_tickets: dict[str, str] = {}
@@ -271,6 +291,20 @@ class Sahil:
         self.session_tickets.setdefault(t.category, t.ticket_id)
         return {"success": True, "ticket_id": t.ticket_id, "priority": t.priority}
 
+    def _tool_ticket_status(self, args: dict) -> dict:
+        if self.failed_ticket_lookups >= config.MAX_FAILED_LOOKUPS:
+            return {"found": False, "message": "Too many unknown ticket IDs. Ask the customer to check the ID."}
+        row = self.tickets.get_ticket(args.get("ticket_id", ""))
+        if row is None:
+            self.failed_ticket_lookups += 1
+            return {"found": False, "message": "No ticket with that ID."}
+        self.ticket_ids.add(row["ticket_id"])  # lets the output guardrail keep this real ID in the reply
+        return {
+            "found": True, "ticket_id": row["ticket_id"], "status": row["status"],
+            "meaning": STATUS_MEANINGS[row["status"]], "raised_at": row["created_at"],
+            "last_updated": row["updated_at"], "note": row["status_note"],
+        }
+
     _ESCALATION_OPENERS = {
         "lost_item": "I'm sorry you left something behind.",
         "bus_no_show": "I'm really sorry your bus didn't run as expected.",
@@ -290,6 +324,9 @@ class Sahil:
             return None
         opener = self._ESCALATION_OPENERS[category]
         existing = self.session_tickets.get(category)
+        saved = self.tickets.get_ticket(existing) if existing else None
+        if saved and saved["status"] == "Done":
+            existing = None  # the earlier ticket was resolved, so a new problem gets a new ticket
         if existing:
             text = (f"{opener} You already have an open ticket for this ({existing}), so I haven't "
                     f"created another one. {config.TICKET_REPLY_PROMISE}")
@@ -308,6 +345,36 @@ class Sahil:
         self.session_tickets[category] = tid
         text = f"{opener} I've raised ticket {tid} for you. {config.TICKET_REPLY_PROMISE}"
         return SahilResponse(text, ticket_ids=[tid], flags=["escalation"])
+
+    def _direct_ticket_status(self, msg: str) -> SahilResponse | None:
+        """Support-ticket status questions, answered in code (works even if the model is down).
+
+        "What's the status of TKT-1001?" -> look it up. "Status of my support ticket?" -> ask for the ID.
+        """
+        ids = _TICKET_ID_IN_TEXT.findall(msg)
+        if not ids:
+            if _TICKET_STATUS_REQUEST.search(msg):
+                return SahilResponse("Sure, I can check that. Please share your ticket ID, it looks like TKT-1001.",
+                                     flags=["ticket_need_id"])
+            return None
+        if not (_TICKET_STATUS_WORDS.search(msg) or msg.strip().upper().replace(" ", "") in
+                {i.upper().replace(" ", "") for i in ids}):
+            return None
+        result = self._tool_ticket_status({"ticket_id": ids[0]})
+        if not result.get("found"):
+            return SahilResponse(
+                "I couldn't find a ticket with that ID. Please check it; it looks like TKT-1001."
+                if "Too many" not in result.get("message", "") else
+                "I'm sorry, I can't check more tickets in this chat. Please use the 'Contact a person' form.",
+                flags=["ticket_not_found"])
+        text = f"Your ticket {result['ticket_id']} is {result['status']}: {result['meaning']}"
+        if result["note"]:
+            text += f" Latest note from our team: {result['note']}"
+        if result["status"] != "Done":
+            text += f" {config.TICKET_REPLY_PROMISE}"
+        else:
+            text += " If you still need help with this, tell me and I can raise a new ticket."
+        return SahilResponse(text, ticket_ids=[], flags=["ticket_status"])
 
     def _direct_booking_lookup(self, msg: str) -> SahilResponse | None:
         """Handle booking-status requests in code, without the model.
@@ -419,7 +486,7 @@ class Sahil:
             self._remember(msg, escalation.text)
             return escalation
 
-        direct = self._direct_booking_lookup(msg)
+        direct = self._direct_ticket_status(msg) or self._direct_booking_lookup(msg)
         if direct is not None:
             self._remember(msg, direct.text)
             return direct
@@ -454,6 +521,8 @@ class Sahil:
                         result = self._tool_ticket(call.args, msg)
                         if result.get("success"):
                             new_tickets.append(result["ticket_id"])
+                    elif call.name == "get_ticket_status":
+                        result = self._tool_ticket_status(call.args)
                     else:
                         result = {"error": f"Unknown tool {call.name}"}
                     turn_messages.append({"role": "tool", "name": call.name, "response": result})

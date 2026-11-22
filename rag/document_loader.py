@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 EXPECTED_FAQS = 20
-EXPECTED_POLICIES = 3
+EXPECTED_POLICIES = 5  # 3 from the original help docs + Booking statuses + Support ticket statuses
 
 _POLICY_RE = re.compile(r"^Policy:\s*(?P<title>.+)$")
 _Q_RE = re.compile(r"^Q:\s*(?P<q>.+)$")
