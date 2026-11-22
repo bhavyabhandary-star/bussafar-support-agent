@@ -189,3 +189,17 @@ h1 { font-size: clamp(30px, 4.6vw, 46px); line-height: 1.1; margin: 0 0 14px; le
   html.sahil-open .sahil-launch { display: none; }
   html.sahil-open body { overflow: hidden; }
 }
+
+/* in-chat forms */
+.sahil-card { display: grid; gap: 8px; width: 85%; }
+.sahil-card strong { font-size: 14px; }
+.sahil-field { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+.sahil-field input, .sahil-field select, .sahil-field textarea {
+  font-size: 14px; color: var(--ink); border: 1.5px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  background: var(--bg); width: 100%;
+}
+.sahil-field textarea { resize: vertical; min-height: 64px; }
+.sahil-field input:focus, .sahil-field select:focus, .sahil-field textarea:focus { border-color: var(--brand); outline: none; }
+.btn-sm { padding: 8px 14px; font-size: 14px; justify-self: start; }
+.sahil-card .sahil-err { margin: 0 !important; min-height: 0; font-size: 13px; }
+.sahil-card.is-done { opacity: .6; }
