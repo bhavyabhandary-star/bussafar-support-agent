@@ -23,6 +23,7 @@
     booking: '<path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/><path d="M10 7v12"/>',
     ticket: '<path d="M9 5H5v14h14v-4"/><path d="M13 5h6v6"/><path d="M19 5l-8 8"/>',
     contact: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>',
+    alert: '<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/>',
   };
   function icon(name, size, cls) {
     const s = document.createElement("span");
@@ -122,8 +123,13 @@
     let sources = (extra && extra.sources) || [];
     const m = body.match(/\s*\(Source:\s*([^)]+)\)\s*$/);
     if (m) { body = body.slice(0, m.index); if (!sources.length) sources = m[1].split(/;\s*/); }
-    b.append(el("p", null, body));
-    if (extra && extra.booking) b.append(bookingCard(extra.booking));
+    const bk = extra && extra.booking;
+    // With a booking card, the card carries the details: one short line above it, the status meaning below.
+    b.append(el("p", null, bk ? "Here is your booking." : body));
+    if (bk) {
+      b.append(bookingCard(bk));
+      if (bk.status_meaning) b.append(el("p", "sahil-meaning", bk.status_meaning));
+    }
     (extra && extra.ticket_ids || []).forEach((t) => b.append(el("span", "sahil-ticket", "Ticket " + t)));
     if (sources.length) {
       const src = el("span", "sahil-src");
@@ -279,8 +285,8 @@
       const problem = await submit();
       go.disabled = false;
       if (problem) { err.textContent = problem; return; }
-      card.classList.add("is-done");
-      card.querySelectorAll("input, select, textarea, button").forEach((n) => { n.disabled = true; });
+      card.classList.add("is-done");  // sent: the summary bubble replaces the form
+      row.remove();
     });
     row.append(card);
     log.append(row);
@@ -321,19 +327,31 @@
     starting = post("/api/session", { passcode: passcode || "" }).then((d) => {
       session = d.session;
       store.set(session);
-      if (!log.children.length) bubble("bot", d.greeting);
+      if (!log.querySelector(".sahil-msg.bot")) {   // greeting goes above a question asked before unlocking
+        const g = bubble("bot", d.greeting);
+        if (pendingRow) log.insertBefore(g, pendingRow);
+      }
       showGate(false);
     }).finally(() => { starting = null; });
     return starting;
   }
 
-  async function ask(text, shown) {
+  // A question asked before the passcode stays visible in the chat behind the gate.
+  let pendingRow = null;
+  function holdQuestion(q) {
+    pending = q;
+    if (pendingRow) pendingRow.remove();
+    pendingRow = bubble("me", q);
+    showGate(true);
+  }
+
+  async function ask(text, shown, echoed) {
     text = (text || "").trim();
     if (!text || busy) return;
-    if (!session) { pending = text; return showGate(true); }
+    if (!session) return holdQuestion(text);
     busy = true;
     send.disabled = true;
-    bubble("me", shown || text);
+    if (!echoed) bubble("me", shown || text);
     const t = typing();
     try {
       const d = await post("/api/chat", { session, message: text, history: turns.slice(-12) });
@@ -361,21 +379,28 @@
   // ---- events ----
   gate.addEventListener("submit", async (e) => {
     e.preventDefault();
-    gateErr.textContent = "";
-    gate.classList.remove("has-err");
+    gateError("");
     passBtn.disabled = true;
     try {
       await start(pass.value);
       pass.value = "";
       const q = pending; pending = "";
+      const echoed = !!pendingRow; pendingRow = null;
       const f = pendingForm; pendingForm = null;
-      if (q) ask(q); else if (f) showForm(f.type, f.opts);
+      if (q) ask(q, undefined, echoed); else if (f) showForm(f.type, f.opts);
     } catch (err) {
-      gateErr.textContent = err.status === 401 ? "That passcode isn't right." : err.message;
-      gate.classList.add("has-err");
-      pass.setAttribute("aria-describedby", "sahilGateErr");
+      gateError(err.status === 401 ? "That passcode isn't right." : err.message);
     } finally { passBtn.disabled = false; }
   });
+  function gateError(msg) {
+    gateErr.textContent = "";
+    if (msg) gateErr.append(icon("alert", 14), msg);
+    pass.classList.toggle("is-bad", !!msg);
+    msg ? pass.setAttribute("aria-invalid", "true") : pass.removeAttribute("aria-invalid");
+  }
+  gateErr.id = "sahil-gate-err";
+  pass.setAttribute("aria-describedby", "sahil-gate-err");
+  pass.addEventListener("input", () => { if (pass.classList.contains("is-bad")) gateError(""); });
 
   form.addEventListener("submit", (e) => { e.preventDefault(); const v = input.value; input.value = ""; autosize(); ask(v); });
   input.addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); } });
@@ -398,6 +423,7 @@
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) setOpen(false); });
   newBtn.addEventListener("click", () => {
     session = null; store.set(null); log.textContent = ""; sos.hidden = true; turns = [];
+    pending = ""; pendingRow = null; gateError("");
     needsPasscode ? showGate(true) : start("").catch((e) => bubble("bot", e.message));
   });
 
@@ -409,8 +435,8 @@
       setOpen(true);
       if (!q) return;
       if (session) return ask(q);
+      if (needsPasscode) return holdQuestion(q);
       pending = q;
-      if (needsPasscode) return showGate(true);
       start("").then(() => { const p = pending; pending = ""; ask(p); }).catch((e) => bubble("bot", e.message));
     },
   };
