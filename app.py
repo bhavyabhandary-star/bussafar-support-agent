@@ -68,6 +68,9 @@ def passcode_gate() -> bool:
     with st.form("passcode_form"):
         code = st.text_input("Enter the passcode to open the chat", type="password")
         submitted = st.form_submit_button("Unlock")
+    if submitted and not code:
+        st.warning("Please enter the passcode.")
+        return False
     if submitted:
         if hmac.compare_digest(code.encode(), expected.encode()):
             st.session_state.authenticated = True

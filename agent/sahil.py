@@ -191,6 +191,12 @@ def infer_citation(reply: str, chunks: list[RetrievedChunk]) -> str | None:
     return None
 
 
+def guardrails_reason(category: str, amount: float | None) -> str:
+    if category == "refund_dispute" and amount:
+        return f"Refund request of ₹{amount:,.0f}, above the ₹2,000 hand-off limit"
+    return CATEGORIES.get(category, "Needs a person")
+
+
 class Sahil:
     def __init__(self, retriever, llm: LLM | None, ticket_manager: TicketManager,
                  bookings_path=config.BOOKINGS_CSV, history_turns: int = 6) -> None:
@@ -203,6 +209,7 @@ class Sahil:
         self.failed_lookups = 0
         self.ticket_ids: set[str] = set()
         self.safety_ticket: str | None = None
+        self.session_tickets: dict[str, str] = {}
 
     # -- helpers --------------------------------------------------------
     def _remember(self, user: str, reply: str) -> None:
@@ -250,7 +257,46 @@ class Sahil:
         except TicketError as exc:
             return {"success": False, "error": str(exc)}
         self.ticket_ids.add(t.ticket_id)
+        self.session_tickets.setdefault(t.category, t.ticket_id)
         return {"success": True, "ticket_id": t.ticket_id, "priority": t.priority}
+
+    _ESCALATION_OPENERS = {
+        "lost_item": "I'm sorry you left something behind.",
+        "bus_no_show": "I'm really sorry your bus didn't run as expected.",
+        "human_request": "Of course, I'll connect you with our support team.",
+        "refund_dispute": "Refund requests above ₹2,000 are reviewed by a person from our support team.",
+    }
+
+    def _rule_escalation(self, msg: str) -> SahilResponse | None:
+        """Hand-offs the brief requires, enforced in code (one ticket per issue type per chat)."""
+        category = guardrails.detect_handoff(msg)
+        if category not in guardrails.ALWAYS_ESCALATE:
+            category = None
+        amount = guardrails.requested_refund_amount(msg)
+        if category is None and amount is not None and amount > guardrails.REFUND_ESCALATION_LIMIT:
+            category = "refund_dispute"
+        if category is None:
+            return None
+        opener = self._ESCALATION_OPENERS[category]
+        existing = self.session_tickets.get(category)
+        if existing:
+            text = (f"{opener} You already have an open ticket for this ({existing}), so I haven't "
+                    f"created another one. {config.TICKET_REPLY_PROMISE}")
+            return SahilResponse(text, ticket_ids=[], flags=["escalation_existing"])
+        pnr_m = _PNR_IN_TEXT.search(msg)
+        result = self._tool_ticket({
+            "customer_message": msg, "category": category,
+            "reason": guardrails_reason(category, amount), "priority": "normal",
+            "pnr": pnr_m.group(1) if pnr_m else "",
+        }, msg)
+        if not result.get("success"):
+            text = (f"{opener} I couldn't create a support ticket just now. Please try again in a "
+                    "moment, or use the 'Contact a person' form.")
+            return SahilResponse(text, flags=["escalation_failed"])
+        tid = result["ticket_id"]
+        self.session_tickets[category] = tid
+        text = f"{opener} I've raised ticket {tid} for you. {config.TICKET_REPLY_PROMISE}"
+        return SahilResponse(text, ticket_ids=[tid], flags=["escalation"])
 
     def _direct_booking_lookup(self, msg: str) -> SahilResponse | None:
         """Handle "PNR + last 4 digits" messages in code, without the model."""
@@ -328,6 +374,11 @@ class Sahil:
         if guardrails.detect_intro_request(msg):
             self._remember(msg, config.INTRO_MESSAGE)
             return SahilResponse(config.INTRO_MESSAGE, flags=["intro"])
+
+        escalation = self._rule_escalation(msg)
+        if escalation is not None:
+            self._remember(msg, escalation.text)
+            return escalation
 
         direct = self._direct_booking_lookup(msg)
         if direct is not None:

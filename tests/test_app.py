@@ -74,3 +74,10 @@ def test_sidebar_ticket_creation_shows_id():
     next(b for b in at.sidebar.button if b.label == "Create ticket").click().run()
     # The ticket store is cached per process, so check the ID format, not the number.
     assert any(re.search(r"Ticket TKT-\d+ created", s.value) for s in at.sidebar.success)
+
+
+def test_empty_passcode_shows_validation_message():
+    at = AppTest.from_file(APP, default_timeout=30).run()
+    at.button[0].click().run()
+    assert any("Please enter the passcode" in w.value for w in at.warning)
+    assert not at.chat_input

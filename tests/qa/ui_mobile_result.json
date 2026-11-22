@@ -1,0 +1,1 @@
+{"status":"Pass","actual":"Headless Chromium at 375x812 on 2026-11-22: passcode screen, unlock, greeting and 7 suggested questions visible; chat input fully on screen (x=41, width 253); page width 375 px, no horizontal scroll; sidebar collapses behind a menu button.","preconditions":"App run locally with a test passcode; Playwright (Chromium) 375x812"}

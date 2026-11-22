@@ -63,7 +63,7 @@ _EMERGENCY_PATTERNS = [
     r"\b(danger\w*|rash\w*|reckless\w*|drunk|unsafe)\b.{0,40}\b(driv(er|ing)|bus)\b",
     r"\b(accident|crash(ed)?|collision|fire|smoke|injur(ed|y)|bleeding|unconscious|heart attack|medical emergency)\b",
     r"\b(harass\w*|molest\w*|assault\w*|groped?|stalk\w*|threaten\w*|attack\w*|abuse\w*|touch(ed|ing) me|misbehav\w*)\b",
-    r"\b(emergency|help me|i am not safe|i'?m not safe|i feel unsafe|in danger|scared for my life|sos)\b",
+    r"\b(emergency|help me(?!\s+(?:to\s+)?(?:book|find|with|cancel|change|check|choose|get|know|understand|track|plan|pick|select|reschedule|pay|apply|use|share|see|print|download|resend))|i am not safe|i'?m not safe|i feel unsafe|in danger|scared for my life|sos)\b",
     r"\b(stranded|abandoned)\b.{0,40}\b(night|alone|highway|road)\b",
 ]
 _EMERGENCY_RE = re.compile("|".join(f"(?:{p})" for p in _EMERGENCY_PATTERNS), re.IGNORECASE)
@@ -91,13 +91,22 @@ _OTHER_PASSENGER_PATTERNS = [
     r"\b(status|booking|ticket|seat|phone|number|details)\b.{0,15}\bof\s+[A-Z][a-z]+\s+[A-Z][a-z]+",
     r"\b[A-Z][a-z]+\s+[A-Z][a-z]+'s\s+(booking|ticket|seat|phone|number|pnr|details)\b",
 ]
+_OTHER_PASSENGER_PATTERNS_EXTRA = [
+    r"\b(all|every|other)\b.{0,15}\b(passenger|customer|traveller)s?\b.{0,10}\b(names?|details|phones?|numbers?|seats?|bookings?)\b",
+    r"\b(another|other|fellow)\s+(passenger|customer|traveller)'?s?\b.{0,20}\b(name|phone|number|seat|details|booking|pnr)",
+    r"\b(passenger|person|traveller|lady|man|woman|guy)\s+(next to|beside|near|behind|in front of|sitting (next to|near|beside))\b",
+]
 _OTHER_PASSENGER_RE = re.compile("|".join(f"(?:{p})" for p in _OTHER_PASSENGER_PATTERNS))
 _OTHER_PASSENGER_RE_I = re.compile("|".join(f"(?:{p})" for p in _OTHER_PASSENGER_PATTERNS[:5]), re.IGNORECASE)
 
 
+_OTHER_PASSENGER_EXTRA_RE = re.compile("|".join(f"(?:{p})" for p in _OTHER_PASSENGER_PATTERNS_EXTRA), re.IGNORECASE)
+
+
 def detect_other_passenger_request(text: str) -> bool:
     text = text or ""
-    return bool(_OTHER_PASSENGER_RE_I.search(text) or _OTHER_PASSENGER_RE.search(text))
+    return bool(_OTHER_PASSENGER_RE_I.search(text) or _OTHER_PASSENGER_RE.search(text)
+                or _OTHER_PASSENGER_EXTRA_RE.search(text))
 
 
 # --- PII redaction -------------------------------------------------------
@@ -109,8 +118,15 @@ _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 _API_KEY_RE = re.compile(r"AIza[0-9A-Za-z_\-]{20,}|sk-[A-Za-z0-9]{20,}")
 
 
+_LAST4_MENTION_RE = re.compile(
+    r"((?:phone|mobile|number|ends?(?:\s+(?:in|with))?|ending(?:\s+(?:in|with))?|last\s*(?:4|four)(?:\s+digits)?)\D{0,12})(\d{4})(?!\d)",
+    re.IGNORECASE,
+)
+
+
 def redact_pii(text: str) -> str:
     text = text or ""
+    text = _LAST4_MENTION_RE.sub(lambda m: m.group(1) + "****", text)
     text = _API_KEY_RE.sub("[redacted key]", text)
     text = _EMAIL_RE.sub("[redacted email]", text)
     text = _AADHAAR_RE.sub("[redacted ID number]", text)
@@ -188,10 +204,32 @@ _INTRO_RE = re.compile(
 )
 _HANDOFF_PATTERNS = [
     ("lost_item", r"\b(left|lost|forgot|forgotten|misplaced)\b.{0,40}\b(on|in)\b.{0,10}\bbus\b"),
-    ("bus_no_show", r"\bbus\b.{0,30}\b(never (came|arrived|showed)|didn'?t (come|arrive|show)|did not (come|arrive|show)|left early|left without me|no[- ]show)\b"),
-    ("human_request", r"\b(talk|speak|connect)\b.{0,20}\b(to|with)\b.{0,10}\b(a |an )?(person|human|agent|someone|representative|executive)\b"),
+    ("bus_no_show", r"\bbus\b.{0,40}\b(never (came|arrived|showed( up)?|turned up)|didn'?t (come|arrive|show|turn up)|did not (come|arrive|show|turn up)|(left|departed|went) (early|before time|without (me|us))|no[- ]show)"),
+    ("human_request", r"\b(talk|speak|connect|chat)\b.{0,20}\b(to|with)\b.{0,10}\b(a |an |real )?(person|human|agent|someone|representative|executive|staff)\b|\b(want|need) (a|an|to reach a) (human|person|agent)\b"),
     ("complaint", r"\b(complain\w*|furious|angry|worst service|disgusted|fed up|unacceptable)\b"),
 ]
+
+
+# Hand-offs that are always enforced in code (the brief's rules), before the model.
+ALWAYS_ESCALATE = {"lost_item", "bus_no_show", "human_request"}
+
+_AMOUNT_RE = re.compile(r"(?:₹|rs\.?|inr|rupees?)\s*([\d,]+(?:\.\d+)?)|([\d,]+(?:\.\d+)?)\s*(?:₹|rs\.?|inr|rupees?)\b", re.IGNORECASE)
+_REFUND_RE = re.compile(r"\brefund", re.IGNORECASE)
+REFUND_ESCALATION_LIMIT = 2000
+
+
+def requested_refund_amount(text: str) -> float | None:
+    """The rupee amount in a refund request, if the message names one."""
+    if not _REFUND_RE.search(text or ""):
+        return None
+    amounts = []
+    for m in _AMOUNT_RE.finditer(text):
+        raw = (m.group(1) or m.group(2) or "").replace(",", "")
+        try:
+            amounts.append(float(raw))
+        except ValueError:
+            pass
+    return max(amounts) if amounts else None
 
 
 def detect_intro_request(text: str) -> bool:
