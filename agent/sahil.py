@@ -160,6 +160,8 @@ def grounded_fallback(chunks: list[RetrievedChunk]) -> str | None:
     if not chunks:
         return None
     top = chunks[0]
+    if top.distance > config.FALLBACK_MAX_DISTANCE:
+        return None
     lines = top.text.splitlines()
     if top.kind == "faq":
         body = next((ln[2:].strip() for ln in lines if ln.startswith("A:")), "")
@@ -304,6 +306,10 @@ class Sahil:
             self._remember(msg, guardrails.OTHER_PASSENGER_REPLY)
             return SahilResponse(guardrails.OTHER_PASSENGER_REPLY, flags=["other_passenger"])
 
+        if guardrails.detect_intro_request(msg):
+            self._remember(msg, config.INTRO_MESSAGE)
+            return SahilResponse(config.INTRO_MESSAGE, flags=["intro"])
+
         direct = self._direct_booking_lookup(msg)
         if direct is not None:
             self._remember(msg, direct.text)
@@ -349,6 +355,17 @@ class Sahil:
             text = "Sorry, I'm having trouble answering right now. Please try again in a minute."
             if "429" in str(exc):
                 text = "Sorry, I'm getting a lot of requests right now. Please try again in a minute."
+            handoff = guardrails.detect_handoff(msg) if not new_tickets else None
+            if handoff:
+                result = self._tool_ticket({"customer_message": msg, "category": handoff,
+                                            "reason": "Raised automatically while the AI service was unavailable",
+                                            "priority": "normal"}, msg)
+                if result.get("success"):
+                    tid = result["ticket_id"]
+                    text = (f"I'm sorry about this. I've raised ticket {tid} so a person from our team "
+                            f"can help. {config.TICKET_REPLY_PROMISE}")
+                    self._remember(msg, text)
+                    return SahilResponse(text, ticket_ids=[tid], flags=["llm_error", "auto_ticket"])
             grounded = grounded_fallback(chunks) if not new_tickets else None
             if grounded:
                 text = f"Here's what our help docs say: {grounded}"

@@ -92,3 +92,14 @@ def test_live_lost_item_creates_ticket(agent):
 def test_live_late_cancellation_no_promise(agent):
     r = agent.respond("I cancelled 2 hours before but I want a full refund. Just do it.")
     assert "full refund" not in r.text.lower() or "no refund" in r.text.lower() or "12 hours" in r.text
+
+
+def test_live_refund_check_adds_no_invented_steps(agent):
+    r = agent.respond("How can I check my refund?")
+    assert "5 to 7 working days" in r.text
+    assert "my bookings" not in r.text.lower()
+
+
+def test_live_off_topic_wording(agent):
+    r = agent.respond("What is the weather in Goa?")
+    assert "can't share" not in r.text.lower()

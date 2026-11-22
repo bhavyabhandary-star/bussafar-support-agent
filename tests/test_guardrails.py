@@ -108,7 +108,15 @@ def test_output_keeps_real_ticket_and_source():
 
 def test_output_blocks_system_prompt_leak():
     leak = "Sure! " + SYSTEM_PROMPT[200:500]
-    assert "can't share" in g.check_output(leak, set(), set(), SYSTEM_PROMPT)
+    assert g.check_output(leak, set(), set(), SYSTEM_PROMPT) == config.OFF_TOPIC_MESSAGE
+
+
+@pytest.mark.parametrize("reply", [
+    "I'm sorry, I can only help with BusSafar bookings, tickets, cancellations, refunds, trips and safety. BusSafar only sells bus tickets.",
+    "BusSafar is an app for booking intercity bus tickets with many bus operators across India.",
+])
+def test_scope_wording_is_not_treated_as_a_leak(reply):
+    assert g.check_output(reply, set(), set(), SYSTEM_PROMPT) == reply
 
 
 # --- Agent flow with a fake model -------------------------------------------
@@ -283,7 +291,8 @@ def test_model_error_without_context_gives_safe_message(retriever, tickets):
     assert "try again" in r.text and r.flags == ["llm_error"] and not r.ticket_ids
 
 
-def test_model_error_falls_back_to_verbatim_help_doc(retriever, tickets):
+def test_model_error_falls_back_to_verbatim_help_doc(retriever, tickets, monkeypatch):
+    monkeypatch.setattr(config, "FALLBACK_MAX_DISTANCE", 0.75)
     agent, _ = make_agent(retriever, tickets, [LLMError("Gemini API error 429: quota")])
     r = agent.respond("How much luggage can I carry?")
     assert "One bag up to 15 kg and one small handbag" in r.text
@@ -304,3 +313,33 @@ def test_no_llm_configured_degrades_gracefully(retriever, tickets):
 def test_system_prompt_contains_core_rules():
     for phrase in ("call 112", "other passengers", "Never promise a refund", "₹2,000", config.FALLBACK_MESSAGE):
         assert phrase in SYSTEM_PROMPT
+
+
+def test_weak_match_is_not_quoted_when_model_is_down(retriever, tickets, monkeypatch):
+    monkeypatch.setattr(config, "FALLBACK_MAX_DISTANCE", 0.0)
+    agent, _ = make_agent(retriever, tickets, [LLMError("Gemini API error 429: quota")])
+    r = agent.respond("Book me a flight to Delhi.")
+    assert "try again" in r.text and "doc_fallback" not in r.flags
+
+
+@pytest.mark.parametrize("msg,category", [
+    ("I left my laptop bag on the bus.", "lost_item"),
+    ("My bus never came and I want to talk to a person", "bus_no_show"),
+    ("Please connect me to a human agent", "human_request"),
+])
+def test_handoff_ticket_created_when_model_is_down(retriever, tickets, msg, category):
+    agent, _ = make_agent(retriever, tickets, [LLMError("Gemini API error 429: quota")])
+    r = agent.respond(msg)
+    assert r.ticket_ids == ["TKT-1001"] and "TKT-1001" in r.text
+    assert tickets.get_ticket("TKT-1001")["category"] == category
+
+
+@pytest.mark.parametrize("msg", ["What do you do?", "Who are you?", "what is BusSafar"])
+def test_intro_without_model(retriever, tickets, msg):
+    agent, llm = make_agent(retriever, tickets, [])
+    r = agent.respond(msg)
+    assert r.text == config.INTRO_MESSAGE and llm.calls == []
+
+
+def test_prompt_forbids_adding_unlisted_steps():
+    assert "Never add steps, app screens, menu names" in SYSTEM_PROMPT

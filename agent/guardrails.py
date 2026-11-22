@@ -136,7 +136,7 @@ def check_output(
 
     # 1. Never leak the system prompt.
     if system_prompt and _leaks_prompt(reply, system_prompt):
-        return "I'm sorry, I can't share that. I can help with BusSafar bookings, tickets, cancellations, refunds, trips and safety."
+        return config.OFF_TOPIC_MESSAGE
 
     # 2. Never show phone numbers, keys or other identifiers.
     reply = redact_pii(reply)
@@ -159,9 +159,17 @@ def check_output(
     return re.sub(r"[ \t]{2,}", " ", reply)
 
 
-def _leaks_prompt(reply: str, system_prompt: str, window: int = 60) -> bool:
+_ALLOWED_PROMPT_PHRASES = [
+    "bookings, tickets, cancellations, refunds, trips and safety",
+    "bus bookings, tickets, cancellations, refunds, trips and safety",
+    "an app for booking intercity bus tickets with many bus operators across India",
+]
+
+
+def _leaks_prompt(reply: str, system_prompt: str, window: int = 80) -> bool:
     # Customer-facing phrases quoted in the prompt are allowed in replies.
-    for allowed in (config.FALLBACK_MESSAGE, config.TICKET_REPLY_PROMISE, config.GREETING):
+    for allowed in (config.FALLBACK_MESSAGE, config.TICKET_REPLY_PROMISE, config.GREETING,
+                    *_ALLOWED_PROMPT_PHRASES):
         system_prompt = system_prompt.replace(allowed, " ")
     norm_reply = " ".join(reply.lower().split())
     norm_prompt = " ".join(system_prompt.lower().split())
@@ -170,6 +178,32 @@ def _leaks_prompt(reply: str, system_prompt: str, window: int = 60) -> bool:
         if len(piece) == window and piece in norm_reply:
             return True
     return False
+
+
+# --- Simple intents handled without the model -----------------------------
+_INTRO_RE = re.compile(
+    r"^\s*(what (do|can) you do|who are you|what are you|what is bussafar|what('s| is) bussafar|"
+    r"tell me about (yourself|bussafar)|what does bussafar do|introduce yourself)\s*[?.!]*\s*$",
+    re.IGNORECASE,
+)
+_HANDOFF_PATTERNS = [
+    ("lost_item", r"\b(left|lost|forgot|forgotten|misplaced)\b.{0,40}\b(on|in)\b.{0,10}\bbus\b"),
+    ("bus_no_show", r"\bbus\b.{0,30}\b(never (came|arrived|showed)|didn'?t (come|arrive|show)|did not (come|arrive|show)|left early|left without me|no[- ]show)\b"),
+    ("human_request", r"\b(talk|speak|connect)\b.{0,20}\b(to|with)\b.{0,10}\b(a |an )?(person|human|agent|someone|representative|executive)\b"),
+    ("complaint", r"\b(complain\w*|furious|angry|worst service|disgusted|fed up|unacceptable)\b"),
+]
+
+
+def detect_intro_request(text: str) -> bool:
+    return bool(_INTRO_RE.search(text or ""))
+
+
+def detect_handoff(text: str) -> str | None:
+    """Category for messages that clearly need a person (used when the model is down)."""
+    for category, pattern in _HANDOFF_PATTERNS:
+        if re.search(pattern, text or "", re.IGNORECASE):
+            return category
+    return None
 
 
 # --- Canned safe replies -------------------------------------------------

@@ -105,7 +105,7 @@ This prints the top 3 sections, each with its distance and whether it passes the
 pytest -q
 ```
 
-The offline tests (149) need no API key or network. They use a deterministic fake embedder and a scripted fake model, and they cover:
+The offline tests (166) need no API key or network. They use a deterministic fake embedder and a scripted fake model, and they cover:
 
 - all 20 FAQs and 3 policies: chunked verbatim, indexed with metadata, and each one retrieved first for its own question
 - an unrelated question returning no context, so Sahil falls back
@@ -116,7 +116,7 @@ The offline tests (149) need no API key or network. They use a deterministic fak
 - the output filter removing invented ticket IDs, invented sources, phone numbers and system-prompt leaks
 - the Streamlit UI: wrong passcode stays locked, right passcode shows the greeting and suggestions, and the sidebar lookup and ticket form work
 
-The live tests (37) call the real Gemini API. They check that each section is retrieved, the fact checks from the brief, the fallback, off-topic refusals, booking lookup and ticket hand-off. They use your quota, so they only run when you ask:
+The live tests (39) call the real Gemini API. They check that each section is retrieved, the fact checks from the brief, the fallback, off-topic refusals, booking lookup and ticket hand-off. They use your quota, so they only run when you ask:
 
 ```bash
 # Windows PowerShell:  $env:RUN_LIVE_TESTS="1"; pytest tests/test_live_agent.py -v
@@ -194,8 +194,8 @@ Notes for Render's free tier:
 
 ## Known limits and incomplete integrations
 
-- **Live chat answers are not yet verified.** Live embeddings and retrieval are verified: all 23 sections are retrieved for their own questions. The chat model could not be tested because `gemini-2.5-flash-lite` is no longer offered to new keys, and the free-tier daily quota ran out during testing. The default is now `gemini-3.5-flash-lite`. Run the live tests again after your quota resets.
-- **Resilience when Gemini is unavailable.** Booking lookups that include a PNR and 4 digits are handled in code, without the model. If the model fails (for example, on quota error 429), Sahil replies with the best-matching help-doc section word for word, with its source, instead of failing outright.
+- **Live verification (22 Nov 2026, `gemini-3.5-flash-lite`).** The live tests passed (37 of 37 at that time), and a 15-message chat check gave correct, sourced answers. That check found three issues, now fixed: "What do you do?" fell back instead of introducing Sahil, a refund answer added an app step that isn't in the docs, and off-topic refusals were worded as "can't share". The free tier allows about 15 requests per minute. Above that, Sahil uses the fallbacks described below.
+- **Resilience when Gemini is unavailable.** Booking lookups that include a PNR and 4 digits are handled in code, without the model. If the model fails (for example, on quota error 429), clear hand-off requests still create a ticket in code: something left on the bus, a bus that never came, or a request for a person. Other questions get the matching help-doc section word for word, but only when the match is strong (distance 0.30 or less). Otherwise Sahil asks the customer to try again.
 - **The relevance cut-off (`RAG_MAX_DISTANCE = 0.36`) was tuned on real Gemini embeddings.** Correct top matches scored 0.22 to 0.32 (for example, "Can I bring my dog?" scored 0.312 against "Are pets allowed?"). Off-topic questions scored 0.37 and above ("What is the weather in Goa?" scored 0.42, and "loyalty points" scored 0.367). Re-check this value with `build_index.py --query` if you change the help docs.
 - **Gaps in the help docs:** there is no refund-tracking procedure, no lost-and-found process and no support phone number or hours. For these, Sahil gives what the docs do say (for example, refunds take 5 to 7 working days) and offers a ticket. The only reply-time promise it makes is the brief's "a person will reply within 24 hours".
 - **The open-tickets sidebar is shown to every app user, because the brief asks for it.** It shows only ticket ID, category, priority and time, never customer messages. Remove it for a real customer-facing deployment.

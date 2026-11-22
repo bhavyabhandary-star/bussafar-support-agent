@@ -51,12 +51,24 @@ TOP_K = 3
 # as "not relevant" so Sahil falls back instead of guessing.
 MAX_DISTANCE = float(get_secret("RAG_MAX_DISTANCE", "0.36") or 0.36)
 
+# When Gemini is unavailable, a help-doc section is quoted only if it is this close.
+FALLBACK_MAX_DISTANCE = float(get_secret("RAG_FALLBACK_MAX_DISTANCE", "0.30") or 0.30)
+
 # --- Agent ---------------------------------------------------------------
 BUSINESS_NAME = "BusSafar"
 AGENT_NAME = "Sahil"
 GREETING = "Hello, I'm Sahil from BusSafar. How can I help with your trip?"
 FALLBACK_MESSAGE = (
     "I don't have that information. Would you like me to connect you to a person?"
+)
+INTRO_MESSAGE = (
+    "I'm Sahil, BusSafar's support assistant. BusSafar is an app for booking intercity bus "
+    "tickets with many bus operators across India, and I can help with your bookings, tickets, "
+    "cancellations, refunds, trips and safety."
+)
+OFF_TOPIC_MESSAGE = (
+    "I'm sorry, I can only help with BusSafar bus bookings, tickets, cancellations, refunds, "
+    "trips and safety."
 )
 TICKET_REPLY_PROMISE = "A person from our support team will reply within 24 hours."
 MAX_INPUT_CHARS = 1000
