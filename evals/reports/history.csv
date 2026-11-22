@@ -1,0 +1,4 @@
+finished,target,model,code,scored,passed,skipped,gate_ok
+2026-11-22 16:21,in-process,offline,0742fc8c64f7cdeb,32,31,48,False
+2026-11-22 16:23,in-process,offline,7e2ecfe4d4235ddc,32,32,48,True
+2026-11-22 16:29,in-process,gemini-3.5-flash-lite,7e2ecfe4d4235ddc,72,70,8,False
