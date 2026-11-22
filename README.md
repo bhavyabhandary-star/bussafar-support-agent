@@ -142,6 +142,32 @@ RUN_LIVE_TESTS=1 pytest tests/test_live_agent.py -v
 | Check my booking. PNR BS558954, phone ends in 0000 | Say it can't find it, with no details |
 | What is the status of Gaurav Thakur's booking? | Refuse, and ask for your own PNR and phone digits |
 
+## Customer website (Sahil as a floating chat)
+
+A thin, one-page BusSafar website where Sahil is the main interaction. It has:
+
+- A short hero with an "Ask Sahil" box and quick questions (check booking, cancel and refund, date change, delays, luggage, support ticket status).
+- "Cancellation at a glance": the refund rules read live from the help docs (`/api/help`). Nothing on the page is hard-coded, so it can never disagree with Sahil.
+- A searchable Help Centre built from the same 20 FAQs, grouped by topic, each with "Ask Sahil about this".
+- A floating Sahil chat on every screen (full screen on phones). It shows the source of each answer, booking cards (without phone digits), ticket IDs and a 112 banner in an emergency.
+
+Design patterns (search-first hero, refund slab card, topic-filtered help centre, floating support chat) are common to Indian bus-booking sites. All branding, wording and policies are BusSafar's own: the refund slabs are BusSafar's 90% / 50% / no refund.
+
+Run it locally (same `.env` as the Streamlit app):
+
+```bash
+uvicorn web.server:app --port 8000
+# open http://localhost:8000
+```
+
+The server (`web/server.py`) is the same Sahil agent as `app.py`, behind four endpoints: `GET /api/health`, `GET /api/help`, `POST /api/session` (passcode, if `APP_PASSCODE` is set) and `POST /api/chat`. Limits:
+- 30 chat messages per visitor per 10 minutes.
+- 5 wrong passcodes per 5 minutes.
+- 40 messages per chat.
+- Chats expire after 30 minutes idle.
+
+Strict security headers (CSP, no framing) are set. Each chat keeps its own memory and its own one-ticket rule.
+
 ## Deploy on Streamlit Community Cloud
 
 1. Create a new **private** GitHub repository and push this folder to it. `.gitignore` already keeps `.env`, `index/`, `tickets.csv` and `.streamlit/secrets.toml` out of git.

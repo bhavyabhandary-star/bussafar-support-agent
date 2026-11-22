@@ -17,3 +17,21 @@ services:
         sync: false   # secret: entered in the Render dashboard, never committed
       - key: GEMINI_CHAT_MODEL
         value: gemini-3.5-flash-lite
+
+  # Optional second service: the customer website with Sahil as a floating chat.
+  - type: web
+    name: bussafar-website
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn web.server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: APP_PASSCODE
+        sync: false
+      - key: GEMINI_CHAT_MODEL
+        value: gemini-3.5-flash-lite
