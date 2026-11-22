@@ -45,6 +45,7 @@ def test_right_passcode_shows_greeting_and_suggestions():
     for q in config.SUGGESTED_QUESTIONS:
         assert q in labels
     assert any("GOOGLE_API_KEY" in w.value for w in at.warning)
+    assert any("Answers only from our help docs" in m.value for m in at.markdown)
 
 
 def test_sidebar_booking_lookup():

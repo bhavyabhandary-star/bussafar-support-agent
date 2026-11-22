@@ -343,3 +343,9 @@ def test_intro_without_model(retriever, tickets, msg):
 
 def test_prompt_forbids_adding_unlisted_steps():
     assert "Never add steps, app screens, menu names" in SYSTEM_PROMPT
+
+
+def test_intro_states_docs_only_and_handoff():
+    assert "support agent" in config.INTRO_MESSAGE
+    assert "only from BusSafar's help docs" in config.INTRO_MESSAGE
+    assert "hand you off to a person" in config.INTRO_MESSAGE

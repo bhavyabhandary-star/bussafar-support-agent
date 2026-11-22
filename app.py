@@ -5,6 +5,7 @@ Run locally:  streamlit run app.py
 from __future__ import annotations
 
 import hmac
+import html
 import time
 
 import pandas as pd
@@ -44,9 +45,9 @@ def header() -> None:
         <div class="bs-header">
           <div class="bs-logo" aria-label="BusSafar logo placeholder">BS</div>
           <div><div class="bs-title">BusSafar Support</div>
-          <div class="bs-sub">Chat with Sahil about bookings, tickets, cancellations, refunds, trips and safety</div></div>
+          <div class="bs-sub">{tagline}</div></div>
         </div>
-        """,
+        """.replace("{tagline}", html.escape(config.APP_TAGLINE)),
         unsafe_allow_html=True,
     )
 

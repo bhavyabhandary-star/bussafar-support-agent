@@ -62,9 +62,13 @@ FALLBACK_MESSAGE = (
     "I don't have that information. Would you like me to connect you to a person?"
 )
 INTRO_MESSAGE = (
-    "I'm Sahil, BusSafar's support assistant. BusSafar is an app for booking intercity bus "
-    "tickets with many bus operators across India, and I can help with your bookings, tickets, "
-    "cancellations, refunds, trips and safety."
+    "I'm Sahil, BusSafar's support agent. I answer only from BusSafar's help docs, and when I "
+    "can't answer something, I hand you off to a person on our support team. I can help with "
+    "your bookings, tickets, cancellations, refunds, trips and safety."
+)
+APP_TAGLINE = (
+    "Sahil, BusSafar's support agent. Answers only from our help docs and hands off to a "
+    "human when it can't."
 )
 OFF_TOPIC_MESSAGE = (
     "I'm sorry, I can only help with BusSafar bus bookings, tickets, cancellations, refunds, "
