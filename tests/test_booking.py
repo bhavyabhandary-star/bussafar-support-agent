@@ -12,8 +12,9 @@ from booking.booking_lookup import (
 ALL = pd.read_csv(config.BOOKINGS_CSV, dtype=str)
 
 
-def test_supplied_data_has_12_bookings():
-    assert len(load_bookings()) == 12
+def test_supplied_data_has_16_bookings():
+    # 12 from the BusSafar data sheet + 4 made-up demo rows covering Pending, Failed, Refunded and No-Show
+    assert len(load_bookings()) == 16
 
 
 def test_valid_lookup_from_brief():
