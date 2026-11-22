@@ -43,3 +43,22 @@ def test_status_meaning_questions_go_to_help_docs(tickets):
     for q in ("What does No-Show mean on my booking?", "what does my booking status mean"):
         assert agent.respond(q).flags == ["llm_unavailable"], q  # reaches the help docs, not a PNR prompt
     assert agent.respond("Check my booking status").flags == ["booking_need_pnr"]
+
+
+def test_refund_of_2000_or_less_is_not_escalated_by_the_model(retriever, tickets):
+    from tests.conftest import call
+    llm = FakeLLM([call("create_ticket", customer_message="x", reason="refund", category="refund_dispute",
+                        priority="normal"),
+                   text("Refunds follow the cancellation policy bands. (Source: Cancellation and refund policy)")])
+    agent = Sahil(retriever, llm, tickets, config.BOOKINGS_CSV)
+    r = agent.respond("I want a refund of ₹2,000 for my trip")
+    assert r.ticket_ids == [] and tickets.list_tickets() == []
+    tool_result = llm.calls[1]["messages"][-1]["response"]
+    assert tool_result["success"] is False and "not escalated" in tool_result["message"]
+
+
+def test_claim_about_services_not_in_docs_becomes_fallback(retriever, tickets):
+    llm = FakeLLM([text("I can only help with BusSafar bus bookings. We do not offer travel insurance.")])
+    agent = Sahil(retriever, llm, tickets, config.BOOKINGS_CSV)
+    r = agent.respond("Explain quantum chromodynamics lattice gauge theory")  # retrieves nothing
+    assert r.text == config.FALLBACK_MESSAGE and "unsupported_claim_replaced" in r.flags
