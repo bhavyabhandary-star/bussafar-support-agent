@@ -166,7 +166,6 @@ h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.05; margin: 0 0 16px; let
   font-weight: 700; box-shadow: 0 14px 36px rgba(22, 23, 42, .28); cursor: pointer;
 }
 .sahil-launch:hover { background: #24253d; }
-.sahil-launch.is-open .sahil-launch-txt::after { content: " ▾"; }
 .sahil-avatar {
   position: relative; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
   background: var(--brand); color: #fff; font-weight: 800; flex: 0 0 auto;
@@ -273,4 +272,12 @@ h1 { font-size: clamp(34px, 5vw, 52px); line-height: 1.05; margin: 0 0 16px; let
   .sahil-form textarea { font-size: 16px; }
   html.sahil-open .sahil-launch { display: none; }
   html.sahil-open body { overflow: hidden; }
+}
+
+/* passcode gate error state, as in the design */
+.sahil-gate.has-err .sahil-row input { border-color: var(--bad); }
+.sahil-gate .sahil-err:not(:empty) { display: flex; align-items: center; gap: 6px; }
+.sahil-gate .sahil-err:not(:empty)::before {
+  content: "!"; width: 14px; height: 14px; border-radius: 50%; border: 2px solid currentColor;
+  display: grid; place-items: center; font-size: 10px; font-weight: 800; line-height: 1; flex: 0 0 auto;
 }

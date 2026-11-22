@@ -1,9 +1,9 @@
 {
  "meta": {
   "started": "2026-11-22 13:19",
-  "finished": "2026-11-22 14:03",
+  "finished": "2026-11-22 16:18",
   "model": "gemini-3.5-flash-lite",
-  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline)"
+  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline); WEB re-run 2026-11-22 16:12 (offline); WEB re-run 2026-11-22 16:13 (offline); WEB re-run 2026-11-22 16:18 (offline)"
  },
  "rows": [
   {
@@ -2568,6 +2568,71 @@
    "Severity": "Critical"
   },
   {
+   "Test Case ID": "WEB-021",
+   "Module": "Website chat",
+   "Test scenario": "Contact form without a PNR",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Contact form without a PNR",
+   "Test data": "Lost item, no PNR",
+   "Expected result": "Asks for the PNR and phone digits (400); safety is the only exception",
+   "Actual result": "HTTP 400: Please enter your PNR: BS followed by 6 digits, like BS123456.",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
+  },
+  {
+   "Test Case ID": "WEB-022",
+   "Module": "Website chat",
+   "Test scenario": "Contact form, PNR with wrong phone digits",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Contact form, PNR with wrong phone digits",
+   "Test data": "BS597452 + 0000",
+   "Expected result": "Says no booking matches; no ticket; locks after 5 tries",
+   "Actual result": "HTTP 400: I couldn't find a booking that matches that PNR and phone number.",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
+  },
+  {
+   "Test Case ID": "WEB-023",
+   "Module": "Website chat",
+   "Test scenario": "Same PNR from another chat",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Same PNR from another chat",
+   "Test data": "BS597452, new chat",
+   "Expected result": "Returns the ticket already open for that PNR",
+   "Actual result": "You already have an open ticket, TKT-1001, so I haven't created another one. A person from our support team will reply within 24 hours.",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
+  },
+  {
+   "Test Case ID": "WEB-024",
+   "Module": "Website chat",
+   "Test scenario": "Track ticket: real ID",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Track ticket: real ID",
+   "Test data": "lower-case ticket ID",
+   "Expected result": "Accepted and tidied to TKT-xxxx",
+   "Actual result": "HTTP 200: {'ticket_id': 'TKT-1001'}",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
+  },
+  {
+   "Test Case ID": "WEB-025",
+   "Module": "Website chat",
+   "Test scenario": "Track ticket: unknown ID",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Track ticket: unknown ID",
+   "Test data": "TKT-9999",
+   "Expected result": "Says there is no such ticket (404); nothing else revealed",
+   "Actual result": "HTTP 404: There's no ticket TKT-9999. Please check the ID on your ticket message.",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
+  },
+  {
    "Test Case ID": "WEB-017",
    "Module": "Website chat",
    "Test scenario": "Form controls",
@@ -2600,8 +2665,8 @@
    "Preconditions": "Headless Chromium, local server, no Gemini key",
    "Test steps": "Tap Talk to a person, submit empty, then fill and submit",
    "Test data": "Lost item + description",
-   "Expected result": "Must pick an issue type; ticket ID shown after Create ticket",
-   "Actual result": "Empty form says 'Please choose an issue type.'; after filling, a ticket ID is shown",
+   "Expected result": "Must pick an issue type and a PNR + phone digits that match; ticket ID shown after Create ticket",
+   "Actual result": "Empty form says 'Please choose an issue type.'; wrong digits say 'I couldn't find a booking that matches that PNR and phone number.'; with a real PNR a ticket ID is shown",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "High"
@@ -2613,8 +2678,8 @@
    "Preconditions": "Headless Chromium, local server, no Gemini key",
    "Test steps": "Open the Ticket ID form at phone size, then Cancel",
    "Test data": "375x812 viewport",
-   "Expected result": "Form fits the screen; Cancel closes it",
-   "Actual result": "Ticket form fits 375px (x=14, w=295); no sideways scroll: true; Cancel removes it: true",
+   "Expected result": "Form fits the screen; unknown ticket ID refused; Cancel closes it",
+   "Actual result": "Ticket form fits 375px (x=14, w=295); no sideways scroll: true; unknown ID says 'There's no ticket TKT-9999. Please check the ID on your ticket message.'; Cancel removes it: true",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "Medium"

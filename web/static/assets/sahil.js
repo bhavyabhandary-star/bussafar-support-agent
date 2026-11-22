@@ -86,6 +86,7 @@
   const passBtn = el("button", "btn btn-primary", "Start chat");
   passBtn.type = "submit";
   const gateErr = el("p", "sahil-err");
+  gateErr.id = "sahilGateErr";
   const gateRow = el("div", "sahil-row");
   gateRow.append(pass, passBtn);
   gate.append(gateRow, gateErr);
@@ -212,10 +213,13 @@
       const tid = textInput({ placeholder: "TKT-1001", maxLength: 12, autocomplete: "off" });
       fields = [field("Ticket ID", tid)];
       go.textContent = "Check ticket";
-      submit = () => {
+      submit = async () => {
         const m = tid.value.trim().toUpperCase().match(/^(?:TKT[\s-]?)?(\d{4,6})$/);
         if (!m) return "Ticket IDs look like TKT-1001.";
-        ask(`What is the status of TKT-${m[1]}?`);
+        try {
+          const d = await post("/api/ticket/check", { session, ticket_id: `TKT-${m[1]}` });
+          ask(`What is the status of ${d.ticket_id}?`);
+        } catch (e2) { return e2.message; }
       };
     } else {
       card.append(formTitle("contact", "Contact a person"));
@@ -224,24 +228,40 @@
       (categories.length ? categories : [{ id: "other", label: "Other" }]).forEach((c) => {
         const o = el("option", null, c.label); o.value = c.id; sel.append(o);
       });
-      const pnr = textInput({ placeholder: "BS123456 (optional)", maxLength: 12, autocomplete: "off" });
+      const pnr = textInput({ placeholder: "BS123456", maxLength: 12, autocomplete: "off" });
+      pnr.style.textTransform = "uppercase";
       const desc = el("textarea");
       desc.rows = 3; desc.maxLength = 1000; desc.placeholder = "What happened?";
-      fields = [field("Issue type", sel), field("PNR (optional)", pnr), field("Describe the issue", desc)];
+      const last4 = textInput({ type: "password", placeholder: "••••", maxLength: 4, inputMode: "numeric", autocomplete: "off" });
+      const pnrField = field("PNR", pnr);
+      const digitsField = field("Last 4 digits of phone", last4);
+      // A safety report must never be held up, so only there the booking details may be left empty.
+      sel.addEventListener("change", () => {
+        const safety = sel.value === "safety";
+        pnrField.firstChild.textContent = safety ? "PNR (optional for safety)" : "PNR";
+        digitsField.firstChild.textContent = safety ? "Last 4 digits of phone (optional for safety)" : "Last 4 digits of phone";
+      });
+      fields = [field("Issue type", sel), pnrField, digitsField, field("Describe the issue", desc)];
       go.textContent = "Create ticket";
       submit = async () => {
         if (!sel.value) return "Please choose an issue type.";
+        const p = pnr.value.replace(/\s+/g, "").toUpperCase();
+        const d4 = last4.value.trim();
+        if (p || sel.value !== "safety") {
+          if (!/^BS\d{6}$/.test(p)) return "Please enter your PNR: BS followed by 6 digits, like BS123456.";
+          if (!/^\d{4}$/.test(d4)) return "Please enter the last 4 digits of the phone number on the booking.";
+        }
         if (desc.value.trim().length < 5) return "Please describe the issue before creating a ticket.";
         const label = sel.options[sel.selectedIndex].text;
-        bubble("me", `${label}: ${desc.value.trim()}`);
-        const t = typing();
+        let d;
         try {
-          const d = await post("/api/ticket", { session, category: sel.value, description: desc.value, pnr: pnr.value });
-          t.remove();
-          turns.push({ role: "user", text: `[Contact form] ${label}: ${desc.value.trim()}` }, { role: "model", text: d.text });
-          bubble("bot", d.text, d);
-          if (d.emergency) sos.hidden = false;
-        } catch (e2) { t.remove(); bubble("bot", e2.message); }
+          d = await post("/api/ticket", { session, category: sel.value, description: desc.value, pnr: p, last4: d4 });
+        } catch (e2) { return e2.message; }   // stays in the form, e.g. a PNR with no booking
+        const shown = `${label}${p ? " · " + p : ""}: ${desc.value.trim()}`;
+        bubble("me", shown);
+        turns.push({ role: "user", text: `[Contact form] ${shown}` }, { role: "model", text: d.text });
+        bubble("bot", d.text, d);
+        if (d.emergency) sos.hidden = false;
       };
     }
     fields.forEach((f) => card.append(f));
@@ -253,8 +273,11 @@
     card.append(err, actions);
     card.addEventListener("submit", async (e) => {
       e.preventDefault();
-      if (busy) return;
+      if (busy || go.disabled) return;
+      err.textContent = "";
+      go.disabled = true;
       const problem = await submit();
+      go.disabled = false;
       if (problem) { err.textContent = problem; return; }
       card.classList.add("is-done");
       card.querySelectorAll("input, select, textarea, button").forEach((n) => { n.disabled = true; });
@@ -339,6 +362,7 @@
   gate.addEventListener("submit", async (e) => {
     e.preventDefault();
     gateErr.textContent = "";
+    gate.classList.remove("has-err");
     passBtn.disabled = true;
     try {
       await start(pass.value);
@@ -348,6 +372,8 @@
       if (q) ask(q); else if (f) showForm(f.type, f.opts);
     } catch (err) {
       gateErr.textContent = err.status === 401 ? "That passcode isn't right." : err.message;
+      gate.classList.add("has-err");
+      pass.setAttribute("aria-describedby", "sahilGateErr");
     } finally { passBtn.disabled = false; }
   });
 
