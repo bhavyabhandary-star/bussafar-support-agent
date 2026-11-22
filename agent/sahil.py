@@ -133,7 +133,7 @@ class GeminiLLM:
 
         cfg = types.GenerateContentConfig(
             system_instruction=system,
-            temperature=0.2,
+            temperature=0.0,  # same question, same grounded answer
             max_output_tokens=600,
             tools=[types.Tool(function_declarations=tools)] if tools else None,
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
@@ -180,15 +180,17 @@ _TICKET_STATUS_REQUEST = re.compile(
     r"|\b(?:support|complaint)\s+ticket\b.{0,25}\b(?:status|update)\b"
     r"|\bmy\s+ticket\s+(?:id|number)\b", re.IGNORECASE)
 _HOW_TO = re.compile(r"\bhow (?:do|can|should) i\b|\bwhere (?:do|can) i\b", re.IGNORECASE)
+# "What does No-Show mean?" asks for the help-doc definition, not a lookup of the customer's booking.
+_MEANING_Q = re.compile(r"\bwhat (?:does|do|is)\b.{0,50}\bmean\b|\bmeaning of\b", re.IGNORECASE)
 _BOOKING_INTENT = re.compile(r"\b(booking|pnr|status|ticket|check|phone|ends?|last)\b", re.IGNORECASE)
 
 
-def grounded_fallback(chunks: list[RetrievedChunk]) -> str | None:
+def grounded_fallback(chunks: list[RetrievedChunk], max_distance: float | None = None) -> str | None:
     """Best-matching help-doc section, word for word, for when the model is down."""
     if not chunks:
         return None
     top = chunks[0]
-    if top.distance > config.FALLBACK_MAX_DISTANCE:
+    if top.distance > (config.FALLBACK_MAX_DISTANCE if max_distance is None else max_distance):
         return None
     lines = top.text.splitlines()
     if top.kind == "faq":
@@ -201,6 +203,20 @@ def grounded_fallback(chunks: list[RetrievedChunk]) -> str | None:
 
 
 _FACT_TOKEN = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|minutes?)|\b[A-Z]{4,}\b")
+
+
+_NUMERIC_FACT = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|minutes?)", re.IGNORECASE)
+
+
+def ungrounded_facts(reply: str, chunks: list[RetrievedChunk], message: str = "") -> list[str]:
+    """Numbers (₹, %, kg, hours, days, minutes) in the reply that no retrieved section or the customer stated.
+
+    A support answer about refunds, fees or limits must quote the help docs exactly, so an amount or
+    time that appears in none of them was made up or mis-copied by the model.
+    """
+    norm = lambda t: re.sub(r"\s+", "", t.lower()).replace("rs.", "₹").replace("rs", "₹")
+    known = norm(" ".join(c.text for c in chunks) + " " + message + " " + config.TICKET_REPLY_PROMISE)
+    return [f for f in _NUMERIC_FACT.findall(reply) if norm(f) not in known]
 
 
 def infer_citation(reply: str, chunks: list[RetrievedChunk]) -> str | None:
@@ -422,7 +438,7 @@ class Sahil:
             if self.pending_pnr and _ONLY_LAST4.match(msg):
                 pnrs = [self.pending_pnr]
                 digits = _LAST4_IN_TEXT.findall(msg)
-            elif _STATUS_REQUEST.search(msg) and not _HOW_TO.search(msg):
+            elif _STATUS_REQUEST.search(msg) and not _HOW_TO.search(msg) and not _MEANING_Q.search(msg):
                 self.awaiting_pnr = True
                 return SahilResponse(
                     "I can check that for you. Please share your PNR (BS followed by 6 digits) and "
@@ -607,15 +623,26 @@ class Sahil:
                 clean += f" Your ticket ID is {tid}. {config.TICKET_REPLY_PROMISE}"
         if not clean.strip():
             clean = config.FALLBACK_MESSAGE
+        flags_extra: list[str] = []
+        bad_facts = ungrounded_facts(clean, chunks, msg) if not new_tickets and not booking else []
+        if bad_facts:
+            # Never show a figure the help docs don't contain: quote the matching section instead.
+            log.warning("Ungrounded facts replaced: %s", bad_facts)
+            grounded = grounded_fallback(chunks, config.MAX_DISTANCE)
+            clean = f"Here's what our help docs say: {grounded}" if grounded else config.FALLBACK_MESSAGE
+            flags_extra.append("ungrounded_replaced")
         is_fallback = config.FALLBACK_MESSAGE in clean
         if chunks and not new_tickets and not is_fallback and "(Source:" not in clean:
             inferred = infer_citation(clean, chunks)
             if inferred:
                 clean = f"{clean} (Source: {inferred})"
         last_reply = next((m["text"] for m in reversed(self.history) if m["role"] == "model"), "")
-        if clean.strip() == last_reply.strip() or clean.strip() == config.GREETING:
+        grounded_answer = any(f"(source: {s.lower()}" in clean.lower() or s.lower() in clean.lower()
+                              for s in allowed_sources) and "(Source:" in clean
+        # A grounded answer may repeat (same question, same policy); anything else must not loop.
+        if clean.strip() == config.GREETING or (clean.strip() == last_reply.strip() and not grounded_answer):
             clean = ("Could you tell me a bit more about what you need? I can help with bookings, ID proof, "
                      "cancellations and refunds, date changes, delays, luggage and safety.")
         cited = [s for s in allowed_sources if s.lower() in clean.lower()]
         self._remember(msg, clean)
-        return SahilResponse(clean, sources=cited, ticket_ids=new_tickets, booking=booking)
+        return SahilResponse(clean, sources=cited, ticket_ids=new_tickets, booking=booking, flags=flags_extra)
