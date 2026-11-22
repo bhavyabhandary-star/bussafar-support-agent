@@ -210,7 +210,12 @@ def chat(agent: Sahil, error: str | None) -> None:
     with st.spinner("Sahil is typing..."):
         try:
             res = agent.respond(prompt)
-            note = f"Ticket created: {', '.join(res.ticket_ids)}" if res.ticket_ids else None
+            notes = []
+            if res.sources:
+                notes.append("Source: BusSafar Help docs, " + "; ".join(res.sources))
+            if res.ticket_ids:
+                notes.append(f"Ticket created: {', '.join(res.ticket_ids)}")
+            note = html.escape(" · ".join(notes)) if notes else None
             st.session_state.messages.append({"role": "assistant", "content": res.text, "note": note})
         except LLMError:
             st.session_state.messages.append(

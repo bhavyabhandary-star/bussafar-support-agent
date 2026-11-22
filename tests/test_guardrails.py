@@ -349,3 +349,36 @@ def test_intro_states_docs_only_and_handoff():
     assert "support agent" in config.INTRO_MESSAGE
     assert "only from BusSafar's help docs" in config.INTRO_MESSAGE
     assert "hand you off to a person" in config.INTRO_MESSAGE
+
+
+def test_missing_citation_is_added_when_reply_repeats_doc_facts(retriever, tickets):
+    agent, _ = make_agent(retriever, tickets, [text("You can carry one bag up to 15 kg and one small handbag.")])
+    r = agent.respond("How much luggage can I carry?")
+    assert r.text.endswith("(Source: FAQ: How much luggage can I carry?)")
+    assert r.sources == ["FAQ: How much luggage can I carry?"]
+
+
+def test_no_citation_added_to_fallback(retriever, tickets):
+    agent, _ = make_agent(retriever, tickets, [text(config.FALLBACK_MESSAGE)])
+    r = agent.respond("Do you have a loyalty points program?")
+    assert "(Source:" not in r.text and r.sources == []
+
+
+def test_no_citation_added_when_reply_has_no_doc_facts(retriever, tickets):
+    agent, _ = make_agent(retriever, tickets, [text("Happy to help with your trip!")])
+    r = agent.respond("How much luggage can I carry?")
+    assert "(Source:" not in r.text
+
+
+def test_no_citation_on_ticket_handoff(retriever, tickets):
+    agent, _ = make_agent(retriever, tickets, [
+        call("create_ticket", customer_message="Lost bag", reason="Lost item", category="lost_item", priority="normal"),
+        text("I've raised ticket TKT-1001 for your bag."),
+    ])
+    r = agent.respond("I left my laptop bag on the bus.")
+    assert "(Source:" not in r.text
+
+
+def test_prompt_requires_grounding_and_citation():
+    assert "Answer policy and help questions ONLY from the KNOWLEDGE BASE CONTEXT" in SYSTEM_PROMPT
+    assert "(Source: <section name>)" in SYSTEM_PROMPT

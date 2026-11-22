@@ -172,6 +172,25 @@ def grounded_fallback(chunks: list[RetrievedChunk]) -> str | None:
     return f"{body} (Source: {top.source})"
 
 
+_FACT_TOKEN = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|minutes?)|\b[A-Z]{4,}\b")
+
+
+def infer_citation(reply: str, chunks: list[RetrievedChunk]) -> str | None:
+    """Source of a retrieved chunk whose specific facts the reply repeats.
+
+    Used only when the model answered from the docs but forgot to cite. A chunk
+    qualifies when the reply repeats at least one of its exact facts (amounts,
+    percentages, limits, codes); otherwise no citation is added.
+    """
+    norm = lambda t: re.sub(r"\s+", "", t.lower())
+    reply_n = norm(reply)
+    for c in chunks:
+        facts = {norm(f) for f in _FACT_TOKEN.findall(c.text)}
+        if facts and any(f in reply_n for f in facts):
+            return c.source
+    return None
+
+
 class Sahil:
     def __init__(self, retriever, llm: LLM | None, ticket_manager: TicketManager,
                  bookings_path=config.BOOKINGS_CSV, history_turns: int = 6) -> None:
@@ -384,6 +403,11 @@ class Sahil:
                 clean += f" Your ticket ID is {tid}. {config.TICKET_REPLY_PROMISE}"
         if not clean.strip():
             clean = config.FALLBACK_MESSAGE
+        is_fallback = config.FALLBACK_MESSAGE in clean
+        if chunks and not new_tickets and not is_fallback and "(Source:" not in clean:
+            inferred = infer_citation(clean, chunks)
+            if inferred:
+                clean = f"{clean} (Source: {inferred})"
         cited = [s for s in allowed_sources if s.lower() in clean.lower()]
         self._remember(msg, clean)
         return SahilResponse(clean, sources=cited, ticket_ids=new_tickets, booking=booking)
