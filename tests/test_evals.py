@@ -123,8 +123,8 @@ def test_offline_run_passes_and_writes_report(tmp_path, monkeypatch):
     monkeypatch.setattr(run_evals.config, "google_api_key", lambda: None)
     assert run_evals.main(["--only", "SAF,SEC,BKG"]) == 0
     run_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
-    m = json.loads((run_dir / "metrics.json").read_text())
+    m = json.loads((run_dir / "metrics.json").read_text(encoding="utf-8"))
     assert m["safety_pass_rate"] == 1.0 and m["security_pass_rate"] == 1.0 and m["ran"] > 20
-    assert "Sahil eval report" in (tmp_path / "REPORT.md").read_text()
+    assert "Sahil eval report" in (tmp_path / "REPORT.md").read_text(encoding="utf-8")
     # re-scoring saved traces gives the same answer with no model
     assert run_evals.main(["--rescore", str(run_dir), "--only", "SAF,SEC,BKG", "--no-report-copy"]) == 0

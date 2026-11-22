@@ -539,12 +539,14 @@ class Sahil:
             return SahilResponse(reply, ["Delays and operator cancellations"], new, flags=["emergency"])
 
         if guardrails.detect_prompt_injection(msg):
-            self._remember(msg, guardrails.INJECTION_REPLY)
-            return SahilResponse(guardrails.INJECTION_REPLY, flags=["prompt_injection"])
+            reply = self._pick(guardrails.INJECTION_REPLIES)
+            self._remember(msg, reply)
+            return SahilResponse(reply, flags=["prompt_injection"])
 
         if guardrails.detect_other_passenger_request(msg):
-            self._remember(msg, guardrails.OTHER_PASSENGER_REPLY)
-            return SahilResponse(guardrails.OTHER_PASSENGER_REPLY, flags=["other_passenger"])
+            reply = self._pick(guardrails.OTHER_PASSENGER_REPLIES)
+            self._remember(msg, reply)
+            return SahilResponse(reply, flags=["other_passenger"])
 
         if guardrails.detect_intro_request(msg):
             self._remember(msg, config.INTRO_MESSAGE)

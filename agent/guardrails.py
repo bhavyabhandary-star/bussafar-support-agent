@@ -303,6 +303,18 @@ OTHER_PASSENGER_REPLY = (
     "or phone numbers. If you'd like to check your own booking, please share your PNR "
     "and the last 4 digits of your registered phone number."
 )
+# Same refusal, other words: Sahil never sends the identical reply twice in a row.
+INJECTION_REPLIES = [
+    INJECTION_REPLY,
+    "I can't help with that. I stick to BusSafar's rules for every customer, but I'm happy to help with "
+    "your booking, a refund, a date change, delays, luggage or safety.",
+    "Sorry, that's not something I can do. Is there anything about your BusSafar trip I can help with instead?",
+]
+OTHER_PASSENGER_REPLIES = [
+    OTHER_PASSENGER_REPLY,
+    "I can't share another passenger's details, sorry. To check your own trip, send your PNR and the last "
+    "4 digits of the phone number on the booking.",
+]
 
 
 def emergency_reply(ticket_id: str | None) -> str:

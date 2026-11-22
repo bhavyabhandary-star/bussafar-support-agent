@@ -173,6 +173,8 @@ def score(scenario: dict, turns: list[dict]) -> list[dict]:
     checks = []
     for t in turns:
         checks += safety_nets(t)
+    for t in turns[:-1]:   # earlier model-written replies must be grounded too
+        checks += [c for c in grounding(t, {}) if c["check"] == "grounded_figures"]
     checks += grounding(turns[-1], scenario["expect"])
     checks += expectations(scenario, turns)
     if scenario["expect"].get("llm") is False:
