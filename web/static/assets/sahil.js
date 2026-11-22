@@ -132,6 +132,7 @@
   function showForm(type, opts) {
     opts = opts || {};
     if (!session) { pendingForm = { type, opts }; return needsPasscode ? showGate(true) : start("").then(() => showForm(type, opts)); }
+    log.querySelectorAll(".sahil-card:not(.is-done)").forEach((c) => c.closest(".sahil-msg").remove());
     const row = el("div", "sahil-msg bot");
     const card = el("form", "sahil-bubble sahil-card");
     card.noValidate = true;
@@ -168,6 +169,7 @@
     } else {
       card.append(el("strong", null, "Contact a person"));
       const sel = el("select");
+      const pick = el("option", null, "Choose one"); pick.value = ""; pick.disabled = true; pick.selected = true; sel.append(pick);
       (categories.length ? categories : [{ id: "other", label: "Other" }]).forEach((c) => {
         const o = el("option", null, c.label); o.value = c.id; sel.append(o);
       });
@@ -177,6 +179,7 @@
       fields = [field("Issue type", sel), field("PNR (optional)", pnr), field("Describe the issue", desc)];
       go.textContent = "Create ticket";
       submit = async () => {
+        if (!sel.value) return "Please choose an issue type.";
         if (desc.value.trim().length < 5) return "Please describe the issue before creating a ticket.";
         const label = sel.options[sel.selectedIndex].text;
         bubble("me", `${label}: ${desc.value.trim()}`);
@@ -191,7 +194,12 @@
       };
     }
     fields.forEach((f) => card.append(f));
-    card.append(err, go);
+    const cancel = el("button", "btn btn-ghost btn-sm", "Cancel");
+    cancel.type = "button";
+    cancel.addEventListener("click", () => { row.remove(); input.focus(); });
+    const actions = el("div", "sahil-actions");
+    actions.append(go, cancel);
+    card.append(err, actions);
     card.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (busy) return;

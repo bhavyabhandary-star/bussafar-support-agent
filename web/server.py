@@ -161,7 +161,8 @@ def help_payload() -> dict:
 
 
 # Which in-chat form to show after a reply, so the customer fills fields instead of typing them.
-FORM_FOR_FLAG = {"booking_need_pnr": "booking", "booking_need_phone": "booking_phone", "ticket_need_id": "ticket_status"}
+FORM_FOR_FLAG = {"booking_need_pnr": "booking", "booking_need_phone": "booking_phone", "ticket_need_id": "ticket_status",
+                 "person_offered": "contact"}
 
 
 def default_agent_factory():
