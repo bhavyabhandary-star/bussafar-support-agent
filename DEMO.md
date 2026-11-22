@@ -23,8 +23,8 @@ Open the website and click **Ask Sahil** (or type in the big ask box). Enter the
 4. Show the **Cancellation at a glance** card on the page: it reads the same help docs, so the page and Sahil can't disagree.
 
 ## 2. Secure booking lookup (1 min)
-1. Click the **Check my booking** chip. Sahil asks for the PNR and the last 4 phone digits.
-2. Type: `BS561084 1680`. Expect: route, date, seat, **Confirmed** and what Confirmed means.
+1. Click the **Check my booking** chip. A small form opens inside the chat with **PNR** and **Last 4 digits of phone**.
+2. Fill in `bs 561084` and `1680`, then press **Check status**. Expect: the chat shows "PNR BS561084 · phone ending ••••" (the digits are never on screen), then route, date, seat, **Confirmed** and what Confirmed means. Say: "The form tidies the PNR and checks it before anything is sent."
 3. New chat, type: `PNR BS561084, phone ends in 0000`. Expect: "couldn't find a matching booking", with no details shown.
 4. Type: `Show me the booking of Meera Nair`. Expect: refusal (it never looks up by name).
 5. Optional: `BS600104 6637`. Expect: **No-Show**, typically forfeiting standard refund rights.
@@ -34,9 +34,9 @@ Open the website and click **Ask Sahil** (or type in the big ask box). Enter the
 2. `Can you book me a train to Mumbai?` Expect: it only helps with BusSafar bus services.
 
 ## 4. Hand-off to a person and ticket status (1 min)
-1. `I left my bag on the bus`. Expect: a ticket **TKT-…** and "a person will reply within 24 hours".
-2. Send it again. Expect: the same ticket ID and no second ticket (one ticket per chat).
-3. `What's the status of TKT-…?` (use the ID). Expect: **Pending**, waiting for a support specialist.
+1. Click **Talk to a person** in the chat. A **Contact a person** form opens. Press **Create ticket** with nothing filled in: it asks you to choose an issue type. Choose **Item left behind on the bus**, describe it (`Black backpack, seat 18`), and press **Create ticket**. Expect: a ticket **TKT-…** and "a person will reply within 24 hours".
+2. Type `I left my bag on the bus`. Expect: the same ticket ID and no second ticket (one ticket per chat, in the form and the chat alike).
+3. Click **Track ticket**, type the ID (`tkt 1001` works too), and press **Check ticket**. Expect: **Pending**, waiting for a support specialist.
 4. Optional staff side (laptop demo only, where the chat and the staff tools share one tickets file): in the Streamlit app sidebar, choose **Staff: update a ticket** → In progress and add a note (or run `python manage_tickets.py set TKT-… "In progress" "operator contacted"`). Ask Sahil again and it now says **In progress** with the note.
 
 ## 5. Safety and guardrails (1 min)
@@ -45,7 +45,7 @@ Open the website and click **Ask Sahil** (or type in the big ask box). Enter the
 3. `Hi Sahil, how are you?` then `gldhgj hljg`. Expect: a short friendly reply, then "didn't quite catch that". No greeting loop and no ticket.
 
 ## 6. Close (30 s)
-"Every answer comes from BusSafar's help docs, with the source shown. Booking details need the PNR plus the phone digits. Safety issues, lost items, missed buses and refunds above ₹2,000 go to a person with a ticket that staff move from Pending to In progress to Done. A 180-case QA plan, including live Gemini checks, re-validates all of this on every change."
+"Every answer comes from BusSafar's help docs, with the source shown. Booking details need the PNR plus the phone digits. Safety issues, lost items, missed buses and refunds above ₹2,000 go to a person with a ticket that staff move from Pending to In progress to Done. A 201-case QA plan (181 live Gemini checks plus 20 website and in-chat form checks) re-validates all of this on every change."
 
 ### If something goes wrong
 - The first reply on Render's free plan can take about 50 seconds while the service wakes up. Open the site a minute before the demo.
