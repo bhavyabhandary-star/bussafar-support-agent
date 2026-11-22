@@ -208,6 +208,7 @@ _FACT_TOKEN = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|m
 _NUMERIC_FACT = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|minutes?)", re.IGNORECASE)
 
 
+_MD_EMPHASIS = re.compile(r"(\*{1,2}|__)(?=\S)([^*\n]+?)(?<=\S)\1")
 _UPSET = re.compile(
     r"\b(?:unhappy|angry|furious|upset|frustrat\w*|disappoint\w*|unacceptable|worst|terrible|horrible|"
     r"awful|complain\w*|disgusted|fed up)\b", re.IGNORECASE)
@@ -664,6 +665,8 @@ class Sahil:
         if clean.strip() == config.GREETING or (clean.strip() == last_reply.strip() and not grounded_answer):
             clean = ("Could you tell me a bit more about what you need? I can help with bookings, ID proof, "
                      "cancellations and refunds, date changes, delays, luggage and safety.")
+        # The chat shows plain text: drop markdown emphasis like *more* or **Pending**.
+        clean = _MD_EMPHASIS.sub(r"\2", clean)
         if (_UPSET.search(msg) and not new_tickets and not booking
                 and not _OFFERS_PERSON.search(clean)):
             # An unhappy customer always hears that a person can help (ticket raised only if they accept).

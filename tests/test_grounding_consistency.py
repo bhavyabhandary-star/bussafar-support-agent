@@ -75,3 +75,11 @@ def test_upset_customer_is_always_offered_a_person(retriever, tickets):
     r = Sahil(retriever, llm, tickets, config.BOOKINGS_CSV).respond("I am very upset")
     assert r.text.count("support team") == 1  # not added twice
     assert tickets.list_tickets() == []
+
+
+def test_markdown_emphasis_is_removed_from_replies(retriever, tickets):
+    """The chat shows plain text, so '*more* than 3 hours' must not show asterisks (DEL-002)."""
+    llm = FakeLLM([text("You can't cancel for a full refund: the delay must be *more* than 3 hours. "
+                        "Status: **Pending**. (Source: Delays and operator cancellations)")])
+    r = Sahil(retriever, llm, tickets, config.BOOKINGS_CSV).respond("My bus is exactly 3 hours late. Full refund?")
+    assert "*" not in r.text and "more than 3 hours" in r.text and "Status: Pending" in r.text

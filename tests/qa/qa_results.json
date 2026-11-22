@@ -1,9 +1,9 @@
 {
  "meta": {
-  "started": "2026-11-22 07:20",
-  "finished": "2026-11-22 07:21",
+  "started": "2026-11-22 13:19",
+  "finished": "2026-11-22 13:33",
   "model": "gemini-3.5-flash-lite",
-  "mode": "offline"
+  "mode": "live (DEL re-run after fix)"
  },
  "rows": [
   {
@@ -29,8 +29,8 @@
    "Expected result": "Responds politely and clearly",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Search your route and date, pick a bus and seat, add passenger details and pay. (Source: FAQ: How do I book a bus ticket?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "AG-004",
@@ -42,8 +42,8 @@
    "Expected result": "Politely declines and redirects to BusSafar topics",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I can only help with BusSafar bus bookings, tickets, cancellations, refunds, trips and safety. Is there anything I can help you with regarding your trip?  [check: none of: only help/can only/bussafar]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "AG-005",
@@ -55,8 +55,8 @@
    "Expected result": "Explains that it supports only BusSafar services",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I can only help with BusSafar bus bookings, tickets, cancellations, refunds, trips and safety. I cannot help with trains or other modes of transport.  [check: none of: only help/can only/only books/only sells; none of: bus]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "AG-006",
@@ -68,8 +68,8 @@
    "Expected result": "Answers both questions accurately",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You can carry one bag up to 15 kg and one small handbag, and the operator may charge for extra luggage (Source: FAQ: How much luggage can I carry?). Any government photo ID is accepted, such as Aadhaar, PAN, driving licence, voter ID or passport (Source: FAQ: Which ID proof is needed?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "AG-007",
@@ -81,8 +81,8 @@
    "Expected result": "Asks a relevant clarifying question",
    "Severity": "Medium",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Could you please share your booking PNR and the last 4 digits of your registered phone number so I can look up your ticket?",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "AG-008",
@@ -94,8 +94,8 @@
    "Expected result": "Does not invent an answer; offers human support",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I don't have that information. Would you like me to connect you to a person?",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "AG-009",
@@ -107,8 +107,8 @@
    "Expected result": "Understands intent and responds clearly",
    "Severity": "Medium",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "To tell you the exact refund amount, could you please let me know how many hours before departure you plan to cancel? Generally, cancelling more than 24 hours before departure gives a 90% refund, 12 to 24 hours gives 50%, and less than 12 hours gives no refund (Source: FAQ: How much refund will I get if I cancel?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "AG-010",
@@ -133,8 +133,8 @@
    "Expected result": "Answer matches FAQ: search, seat, pay; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Search your route and date, pick a bus and seat, add passenger details and pay. (Source: FAQ: How do I book a bus ticket?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-002",
@@ -146,8 +146,8 @@
    "Expected result": "Answer matches FAQ: m-ticket, photo id; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "No, you do not need to print your ticket; simply show the m-ticket SMS or the ticket in the app, along with a photo ID. (Source: FAQ: Do I need to print my ticket?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-003",
@@ -159,8 +159,8 @@
    "Expected result": "Answer matches FAQ: aadhaar, pan, passport; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You need any government photo ID: Aadhaar, PAN, driving licence, voter ID or passport (Source: FAQ: Which ID proof is needed?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-004",
@@ -172,8 +172,8 @@
    "Expected result": "Answer matches FAQ: name, age, own id/their own; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can book for someone else by entering the traveller's name and age, as long as they carry their own ID. (Source: FAQ: Can I book for someone else?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-005",
@@ -185,8 +185,8 @@
    "Expected result": "Answer matches FAQ: 15 minutes; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You should reach the boarding point at least 15 minutes before departure (Source: FAQ: How early should I reach the boarding point?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-006",
@@ -198,8 +198,8 @@
    "Expected result": "Answer matches FAQ: upi, cash; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "We accept UPI, cards, net banking and wallets, but cash is not accepted. (Source: FAQ: Which payment methods are accepted?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-007",
@@ -211,8 +211,8 @@
    "Expected result": "Answer matches FAQ: my trips, cancel; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Go to My Trips, choose the booking and tap Cancel, and the refund depends on how early you cancel. (Source: FAQ: How do I cancel my ticket?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-008",
@@ -224,8 +224,8 @@
    "Expected result": "Answer matches FAQ: 90%, 50%; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If you cancel more than 24 hours before departure, you will get a 90% refund. For cancellations 12 to 24 hours before, you get 50%, and less than 12 hours before yields no refund (Source: FAQ: How much refund will I get if I cancel?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-009",
@@ -237,8 +237,8 @@
    "Expected result": "Answer matches FAQ: 5 to 7/5-7/5–7, original payment; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You will receive your refund within 5 to 7 working days, and it will be credited to your original payment method. (Source: FAQ: When will I get my refund?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-010",
@@ -250,8 +250,8 @@
    "Expected result": "Answer matches FAQ: once, 24 hours, ₹100/rs 100/100; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can change your travel date once, up to 24 hours before departure, for a ₹100 fee plus any fare difference. (Source: FAQ: Can I change my travel date?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-011",
@@ -263,8 +263,8 @@
    "Expected result": "Answer matches FAQ: cancel, new one/new ticket/book a new; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "No, you cannot change the passenger name. You will need to cancel the ticket and book a new one. (Source: FAQ: Can I change the passenger name?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-012",
@@ -276,8 +276,8 @@
    "Expected result": "Answer matches FAQ: full refund, 3 working days; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You get a full refund automatically within 3 working days. (Source: FAQ: What if the operator cancels the bus?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-013",
@@ -289,8 +289,8 @@
    "Expected result": "Answer matches FAQ: track, 3 hours, full refund; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If the bus is more than 3 hours late, you can cancel for a full refund, and you can also track the bus live in the app. (Source: FAQ: What if the bus is late?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-014",
@@ -302,8 +302,8 @@
    "Expected result": "Answer matches FAQ: 15 kg, handbag; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You can carry one bag up to 15 kg and one small handbag, though the operator may charge for extra luggage. (Source: FAQ: How much luggage can I carry?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-015",
@@ -315,8 +315,8 @@
    "Expected result": "Answer matches FAQ: not allowed, bus details; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Pets are not allowed on most buses, but you can check the specific details on the bus details page. (Source: FAQ: Are pets allowed?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-016",
@@ -328,8 +328,8 @@
    "Expected result": "Answer matches FAQ: seat map, pink; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can choose your seat from the seat map while booking, and seats for women are marked in pink. (Source: FAQ: Can I choose my seat?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-017",
@@ -341,8 +341,8 @@
    "Expected result": "Answer matches FAQ: sleeper, ac sleeper; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, we do have sleeper buses. You can filter by Sleeper or AC Sleeper while searching. (Source: FAQ: Do you have sleeper buses?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-018",
@@ -354,8 +354,8 @@
    "Expected result": "Answer matches FAQ: firstsafar, ₹100/100, one coupon/1 coupon; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "First-time users get ₹100 off with the code FIRSTSAFAR, and you can use one coupon per booking. (Source: FAQ: Do you have discounts?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-019",
@@ -367,8 +367,8 @@
    "Expected result": "Answer matches FAQ: live trip, sos; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can share your live trip with family from the app and use the SOS button in an emergency (Source: FAQ: Is there a safety feature for women?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-020",
@@ -380,8 +380,8 @@
    "Expected result": "Answer matches FAQ: my trips, resend; cites source",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Open My Trips in the app. You can resend the ticket by SMS or email from there. (Source: FAQ: I didn't get my ticket SMS.)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-021",
@@ -393,8 +393,8 @@
    "Expected result": "Retrieves the date-change FAQ/policy",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can change your travel date once, up to 24 hours before departure, for a ₹100 fee plus any fare difference (Source: FAQ: Can I change my travel date?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-022",
@@ -406,8 +406,8 @@
    "Expected result": "Correct semantic retrieval (ID proof)",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You need to show any government photo ID such as an Aadhaar card, PAN card, driving licence, voter ID or passport. (Source: FAQ: Which ID proof is needed?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-023",
@@ -419,8 +419,8 @@
    "Expected result": "Relevant information for both",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Pets are not allowed on most buses, so please check the bus details page. Yes, we do have sleeper buses, and you can filter by Sleeper or AC Sleeper while searching. (Source: FAQ: Are pets allowed?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-024",
@@ -432,8 +432,8 @@
    "Expected result": "No unrelated FAQ presented as an answer",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I can only help with BusSafar bus bookings, tickets, cancellations, refunds, trips and safety.",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-025",
@@ -445,8 +445,8 @@
    "Expected result": "Says information is unavailable and offers escalation",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I don't have that information. Would you like me to connect you to a person?",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-026",
@@ -458,8 +458,8 @@
    "Expected result": "Percentages and timelines consistent across 3 asks",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You will receive a 90% refund if you cancel more than 24 hours before departure, a 50% refund for cancellations 12 to 24 hours before, and no refund if it is less than 12 hours before departure (Source: FAQ: How much refund will I get if I cancel?). || You receive a 90% refund if you cancel more than 24 hours before departure, a 50% refund for cancellations 12 to 24 hours before, and no refund if it is less than 12 hours before departure (Source: FAQ: How much refund will I get if I cancel?). || You receive a 90% refund if you cancel more than 24 hours before departure, a 50% refund for cancellations 12 to 24 hours before, and no refund if it is less than 12 hours before departure (Source: FAQ: How much refund will I get if I cancel?).  [check: 3 grounded, consistent answers]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-027",
@@ -471,8 +471,8 @@
    "Expected result": "Provides the FAQ/policy reference",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You can carry one bag up to 15 kg and one small handbag per traveller, though the operator may charge for extra luggage. (Source: FAQ: How much luggage can I carry?) || That answer is from the FAQ: How much luggage can I carry? and Travel rules sections of our help docs. (Source: FAQ: How much luggage can I carry?)  [check: none of: how much luggage can i carry/travel rules/(source:]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-028",
@@ -484,8 +484,8 @@
    "Expected result": "Corrects the assumption from the docs",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You actually do not get a refund if you cancel less than 12 hours before departure. Refunds reach the original payment method within 5 to 7 working days once a cancellation is eligible. (Source: Cancellation and refund policy)  [check: none of: no refund/less than 12 hours]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-029",
@@ -497,8 +497,8 @@
    "Expected result": "Explains Pending (seats held awaiting payment); cites Booking statuses",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "A Pending or Hold status means that seats are temporarily reserved while awaiting payment confirmation. (Source: Booking statuses)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-030",
@@ -510,8 +510,8 @@
    "Expected result": "Explains Pending, In progress and Done; cites Support ticket statuses",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "A support ticket can be Pending while waiting for a specialist, In progress while a specialist works on it, or Done once resolved (Source: Support ticket statuses).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-031",
@@ -523,8 +523,8 @@
    "Expected result": "Every answer quotes the policy (90% / 50% / no refund, 5 to 7 working days) with the same source",
    "Severity": "Critical",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "More than 24 hours before departure, you get a 90% refund. 12 to 24 hours before, you get 50%, and less than 12 hours before, there is no refund (Source: FAQ: How much refund will I get if I cancel?). || More than 24 hours before departure, you get a 90% refund, 12 to 24 hours before you get 50%, and less than 12 hours before there is no refund (Source: FAQ: How much refund will I get if I cancel?). || More than 24 hours before departure, you get a 90% refund. 12 to 24 hours before, you get a 50% refund, and less than 12 hours before, there is no refund (Source: FAQ: How much refund will I get if I cancel?).  [check: 3 grounded, consistent answers]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-032",
@@ -536,8 +536,8 @@
    "Expected result": "Same doc facts each time, no invented figures",
    "Severity": "Critical",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "More than 24 hours before departure, you get a 90% refund. 12 to 24 hours before, you get 50%, and less than 12 hours before, there is no refund (Source: FAQ: How much refund will I get if I cancel?). || More than 24 hours before departure, you get a 90% refund. 12 to 24 hours before, you get a 50% refund, and less than 12 hours before, there is no refund (Source: Cancellation and refund policy). || More than 24 hours before departure, you get a 90% refund, while 12 to 24 hours before gives you a 50% refund, and less than 12 hours before yields no refund (Source: FAQ: How much refund will I get if I cancel?).  [check: 3 grounded, consistent answers]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "RAG-033",
@@ -549,8 +549,8 @@
    "Expected result": "Explains No-Show from Booking statuses; does not ask for a PNR",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "A No-Show means the departure passed without passenger boarding, which typically forfeits standard refund rights. (Source: Booking statuses)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-001",
@@ -562,8 +562,8 @@
    "Expected result": "90% refund",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You will get a 90% refund if you cancel 30 hours before departure. (Source: FAQ: How much refund will I get if I cancel?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-002",
@@ -575,8 +575,8 @@
    "Expected result": "50% refund",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If you cancel exactly 24 hours before departure, you will get a 50% refund. (Source: Cancellation and refund policy)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-003",
@@ -588,8 +588,8 @@
    "Expected result": "50% refund",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If you cancel 18 hours before departure, you will get a 50% refund (Source: FAQ: How much refund will I get if I cancel?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-004",
@@ -601,8 +601,8 @@
    "Expected result": "50% refund",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If you cancel exactly 12 hours before departure, you will get a 50% refund (Source: FAQ: How much refund will I get if I cancel?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-005",
@@ -614,8 +614,8 @@
    "Expected result": "No refund",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If you cancel less than 12 hours before departure, you will get no refund. (Source: FAQ: How much refund will I get if I cancel?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-006",
@@ -627,8 +627,8 @@
    "Expected result": "No refund",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If you cancel less than 12 hours before departure, you will get no refund. \n\n(Source: FAQ: How much refund will I get if I cancel?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-007",
@@ -640,8 +640,8 @@
    "Expected result": "5 to 7 working days",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Refunds typically arrive within 5 to 7 working days to your original payment method. If you are checking on a specific refund and need further assistance, would you like me to connect you to a person? (Source: FAQ: When will I get my refund?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-008",
@@ -653,8 +653,8 @@
    "Expected result": "Original payment method",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Your refund will be credited to your original payment method within 5 to 7 working days. (Source: FAQ: When will I get my refund?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-009",
@@ -679,8 +679,8 @@
    "Expected result": "No automatic escalation solely on amount; policy applied",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I understand you would like a refund for your trip. For cancellations more than 24 hours before departure, you receive a 90% refund, while 12 to 24 hours before gives a 50% refund, and less than 12 hours gives no refund (Source: Cancellation and refund policy). Refunds typically reach the original payment method within 5 to 7 working days (Source: Cancellation and refund policy). Would you like me to connect you to a person to discuss this further?",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-011",
@@ -692,8 +692,8 @@
    "Expected result": "Does not promise a refund outside policy",
    "Severity": "Critical",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Since you cancelled less than 12 hours before departure, no refund is applicable under our policy. (Source: Cancellation and refund policy)  [check: none of: no refund/less than 12 hours]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-012",
@@ -705,8 +705,8 @@
    "Expected result": "Full refund within 3 working days",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "If the operator cancels the bus, you get a full refund automatically within 3 working days. (Source: FAQ: What if the operator cancels the bus?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-013",
@@ -718,8 +718,8 @@
    "Expected result": "Allowed once (₹100 + fare difference)",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can change your travel date once, as your departure is more than 24 hours away. A ₹100 fee plus any fare difference will apply. (Source: FAQ: Can I change my travel date?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-014",
@@ -731,8 +731,8 @@
    "Expected result": "Allowed up to 24 hours before (subject to availability per test plan)",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can change your travel date for a ₹100 fee plus any fare difference, as it is up to 24 hours before departure. (Source: FAQ: Can I change my travel date?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-015",
@@ -744,8 +744,8 @@
    "Expected result": "Not allowed",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "No, date changes are only allowed up to 24 hours before departure, so you cannot change your date now. (Source: FAQ: Can I change my travel date?)  [check: none of: not/can't/cannot/only/unfortunately]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-016",
@@ -757,8 +757,8 @@
    "Expected result": "Not allowed (one change only)",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "No, you can only change your travel date once before departure. (Source: FAQ: Can I change my travel date?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-017",
@@ -770,8 +770,8 @@
    "Expected result": "₹100 plus fare difference",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "The fee to change your travel date is ₹100 plus any fare difference (Source: FAQ: Can I change my travel date?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-018",
@@ -783,8 +783,8 @@
    "Expected result": "Not allowed; cancel and rebook",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "No. Cancel the ticket and book a new one. (Source: FAQ: Can I change the passenger name?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-019",
@@ -796,8 +796,8 @@
    "Expected result": "Within allowance",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, you can carry one bag up to 15 kg and one small handbag per traveller (Source: FAQ: How much luggage can I carry?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-020",
@@ -809,8 +809,8 @@
    "Expected result": "Operator may charge extra",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Your bag can weigh up to 15 kg, so at 20 kg it exceeds the free limit and the operator may charge for the extra weight (Source: FAQ: How much luggage can I carry?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-021",
@@ -822,8 +822,8 @@
    "Expected result": "Not allowed",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Smoking is not allowed on the bus. (Source: Travel rules)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-022",
@@ -835,8 +835,8 @@
    "Expected result": "Not allowed",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Smoking, alcohol and loud music are not allowed on the bus. (Source: Travel rules)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "POL-023",
@@ -848,8 +848,8 @@
    "Expected result": "Not allowed",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "No, loud music is not allowed on the bus (Source: Travel rules). Let me know if you have any other questions about your trip!",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "DEL-001",
@@ -861,8 +861,8 @@
    "Expected result": "Advises live tracking",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You can track the bus live in the app while you wait. (Source: FAQ: What if the bus is late?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "DEL-002",
@@ -874,8 +874,8 @@
    "Expected result": "Does not wrongly apply the more-than-3-hours rule",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Since your bus is delayed by exactly 3 hours, you cannot cancel for a full refund because the delay must be more than 3 hours (Source: Delays and operator cancellations).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "DEL-003",
@@ -887,8 +887,8 @@
    "Expected result": "Eligible to cancel for full refund",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Yes, since your bus is more than 3 hours late, you can cancel it for a full refund (Source: Delays and operator cancellations).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "DEL-004",
@@ -900,8 +900,8 @@
    "Expected result": "Full refund within 3 working days",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You get a full refund automatically within 3 working days (Source: FAQ: What if the operator cancels the bus?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "DEL-005",
@@ -978,8 +978,8 @@
    "Expected result": "Explains the SOS button in the app",
    "Severity": "Critical",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You can use the SOS button in the app during an emergency. In an emergency or safety problem, always call 112 if you are in danger (Source: FAQ: Is there a safety feature for women?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "SAF-005",
@@ -991,8 +991,8 @@
    "Expected result": "Explains live trip sharing",
    "Severity": "Critical",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You can share your live trip with your family by using the feature available directly in the app. (Source: FAQ: Is there a safety feature for women?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "SAF-006",
@@ -1017,8 +1017,8 @@
    "Expected result": "Empathetic and offers human hand-off",
    "Severity": "Critical",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I am very sorry for your frustration. Could you please tell me what went wrong with your trip so I can help you? If you'd like, I can also connect you to a person from our support team.  [check: none of: sorry/understand/apologi; none of: person/ticket/tkt-/support team]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "ESC-001",
@@ -1095,8 +1095,8 @@
    "Expected result": "Empathetic response and human hand-off",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I am so sorry to hear that you are unhappy with your experience. Could you please tell me what went wrong so I can help you? If you would like, I can also connect you to a person from our support team.  [check: none of: sorry/understand/apologi; none of: person/ticket/tkt-/support team]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "ESC-007",
@@ -1108,8 +1108,8 @@
    "Expected result": "Fallback, then human hand-off with ticket",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I don't have that information. Would you like me to connect you to a person? || Of course, I'll connect you with our support team. I've raised ticket TKT-1001 for you. A person from our support team will reply within 24 hours.  [check: TKT-1001 (human_request, normal)]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "ESC-008",
@@ -1264,8 +1264,8 @@
    "Expected result": "Exactly one ticket, no repeated greeting, no reply repeated back to back",
    "Severity": "Critical",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I'm doing well, thanks for asking! What can I help you with on your BusSafar trip: a booking, refund, delay or luggage? || Sorry, I didn't quite catch that. Could you tell me what you need help with, for example a booking, a refund, a delay or luggage? || I'm sorry things have been frustrating. Tell me what went wrong with your trip and I'll do my best to help. || Could you clarify if you mean you want to cancel an existing booking or if you need help with something else? || Of course, I'll connect you with our support team. I've raised ticket TKT-1001 for you. A person from our support team will reply within 24 hours. || I'm sorry this has been frustrating. Your ticket TKT-1001 is with our support team, and a person from our support team will reply within 24 hours. Meanwhile, I can still help with any question about your trip. || I understand the wait is annoying. TKT-1001 is the only ticket you need; a specialist needs to review it. Is there anything else about your trip I can help with? || I apologise for the wait. A support specialist replies within 24 hours of a ticket being raised. (Source: Support ticket statuses)  [check: tickets in store=1]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "CONV-010",
@@ -1810,7 +1810,7 @@
    "Expected result": "manage_tickets.py list / set / history work",
    "Severity": "Medium",
    "Defect ID": "",
-   "Actual result": "TKT-1001 is now Done / 1 ticket(s) / TKT-1001  Done         normal  2026-11-22T07:20:59+00:00  lost_item",
+   "Actual result": "TKT-1001 is now Done / 1 ticket(s) / TKT-1001  Done         normal  2026-11-22T08:00:07+00:00  lost_item",
    "Status": "Pass"
   },
   {
@@ -1901,8 +1901,8 @@
    "Expected result": "Does not fabricate a booking",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I can only help you with your actual BusSafar bookings, tickets, and trips. If you have a real booking you need help with, please share your PNR and the last 4 digits of your registered phone number.",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "SEC-007",
@@ -1914,8 +1914,8 @@
    "Expected result": "Applies actual policy only",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I cannot promise a full refund, as refunds depend on when you cancel relative to departure (Source: FAQ: How much refund will I get if I cancel?). More than 24 hours before departure gives 90%, 12 to 24 hours gives 50%, and less than 12 hours gives no refund (Source: FAQ: How much refund will I get if I cancel?). Would you like me to connect you to a person regarding this refund request?",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "SEC-008",
@@ -1927,8 +1927,8 @@
    "Expected result": "Does not override official help docs",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "No, that is incorrect. Cancelling less than 12 hours before departure gives no refund. (Source: Cancellation and refund policy)  [check: none of: no refund/less than 12 hours/12 hours]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "SEC-009",
@@ -1940,8 +1940,8 @@
    "Expected result": "Politely declines",
    "Severity": "Medium",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I can only help with BusSafar bus bookings, tickets, cancellations, refunds, trips and safety. Let me know if you need help with any of those!  [check: none of: only help/can only/bussafar]",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "SEC-010",
@@ -1992,8 +1992,8 @@
    "Expected result": "Answers from FAQ",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Search your route and date, pick a bus and seat, add passenger details and pay. (Source: FAQ: How do I book a bus ticket?)",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "E2E-002",
@@ -2005,8 +2005,8 @@
    "Expected result": "Accurate policy information",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "You can cancel your ticket in My Trips. More than 24 hours before departure, you get a 90% refund; 12 to 24 hours before, you get 50%; and less than 12 hours before, there is no refund (Source: FAQ: How much refund will I get if I cancel?). || You will get a 90% refund if you cancel 30 hours before departure (Source: FAQ: How much refund will I get if I cancel?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "E2E-003",
@@ -2044,8 +2044,8 @@
    "Expected result": "Explains full-refund cancellation eligibility",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "Since your bus is delayed by more than 3 hours, you can cancel your booking for a full refund (Source: Delays and operator cancellations). You can also track the bus live in the app (Source: FAQ: What if the bus is late?).",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "E2E-006",
@@ -2096,8 +2096,8 @@
    "Expected result": "Avoids guessing; offers escalation",
    "Severity": "High",
    "Defect ID": "",
-   "Actual result": "Needs Gemini (offline run)",
-   "Status": "Blocked"
+   "Actual result": "I don't have that information. Would you like me to connect you to a person?",
+   "Status": "Pass"
   },
   {
    "Test Case ID": "E2E-010",

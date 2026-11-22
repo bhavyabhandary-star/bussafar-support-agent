@@ -68,7 +68,8 @@ class Case:
 
 
 def low(r) -> str:
-    return r.text.lower()
+    # Ignore markdown emphasis (*more* than 3 hours) when matching expected wording.
+    return re.sub(r"[*_]{1,2}", "", r.text).lower()
 
 
 def has_all(*subs):
