@@ -208,6 +208,12 @@ _FACT_TOKEN = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|m
 _NUMERIC_FACT = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|minutes?)", re.IGNORECASE)
 
 
+_UPSET = re.compile(
+    r"\b(?:unhappy|angry|furious|upset|frustrat\w*|disappoint\w*|unacceptable|worst|terrible|horrible|"
+    r"awful|complain\w*|disgusted|fed up)\b", re.IGNORECASE)
+_OFFERS_PERSON = re.compile(r"\b(?:person|support team|specialist|human|agent)\b|TKT-\d+", re.IGNORECASE)
+
+
 _UNSUPPORTED_CLAIM = re.compile(
     r"\b(?:we|bussafar)\s+(?:do(?:es)?\s+not|don'?t|doesn'?t|currently\s+do\s+not)\s+(?:offer|provide|have|sell|support)\b"
     r"|\b(?:we|bussafar)\s+(?:offer|provide)s?\s+(?!only)", re.IGNORECASE)
@@ -658,6 +664,13 @@ class Sahil:
         if clean.strip() == config.GREETING or (clean.strip() == last_reply.strip() and not grounded_answer):
             clean = ("Could you tell me a bit more about what you need? I can help with bookings, ID proof, "
                      "cancellations and refunds, date changes, delays, luggage and safety.")
+        if (_UPSET.search(msg) and not new_tickets and not booking
+                and not _OFFERS_PERSON.search(clean)):
+            # An unhappy customer always hears that a person can help (ticket raised only if they accept).
+            open_tid = self._open_session_ticket()
+            clean += (f" Your ticket {open_tid} is already with our support team." if open_tid else
+                      " If you'd like, I can also connect you to a person from our support team.")
+            flags_extra.append("person_offered")
         cited = [s for s in allowed_sources if s.lower() in clean.lower()]
         self._remember(msg, clean)
         return SahilResponse(clean, sources=cited, ticket_ids=new_tickets, booking=booking, flags=flags_extra)

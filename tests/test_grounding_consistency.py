@@ -62,3 +62,16 @@ def test_claim_about_services_not_in_docs_becomes_fallback(retriever, tickets):
     agent = Sahil(retriever, llm, tickets, config.BOOKINGS_CSV)
     r = agent.respond("Explain quantum chromodynamics lattice gauge theory")  # retrieves nothing
     assert r.text == config.FALLBACK_MESSAGE and "unsupported_claim_replaced" in r.flags
+
+
+def test_upset_customer_is_always_offered_a_person(retriever, tickets):
+    """SAF-007 / ESC-006: an apology alone is not enough; Sahil offers a person (no ticket until they accept)."""
+    for msg in ("This is the worst service ever. I am really angry with BusSafar!",
+                "I am extremely unhappy. This is unacceptable and I want to complain."):
+        llm = FakeLLM([text("I am so sorry to hear that. Could you tell me what went wrong?")])
+        r = Sahil(retriever, llm, tickets, config.BOOKINGS_CSV).respond(msg)
+        assert "person from our support team" in r.text and r.ticket_ids == [], r.text
+    llm = FakeLLM([text("Sorry about that. A person from our support team can help if you like.")])
+    r = Sahil(retriever, llm, tickets, config.BOOKINGS_CSV).respond("I am very upset")
+    assert r.text.count("support team") == 1  # not added twice
+    assert tickets.list_tickets() == []
