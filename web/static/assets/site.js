@@ -30,12 +30,20 @@
     pol.lines.filter((l) => /refund/i.test(l) && /before departure/i.test(l)).forEach((line) => {
       const [when, what] = line.split(/:\s*/);
       const li = el("li", "slab");
-      const pct = (what || "").match(/\d+%/);
-      li.appendChild(el("span", "slab-val" + (pct ? "" : " none"), pct ? pct[0] : "0%"));
+      const pct = ((what || "").match(/\d+%/) || ["0%"])[0];
+      const row = el("div", "slab-row");
       const t = el("span", "slab-txt");
       t.appendChild(el("strong", null, when));
       t.appendChild(el("span", null, (what || "").replace(/\.$/, "")));
-      li.appendChild(t);
+      row.appendChild(t);
+      row.appendChild(el("span", "slab-val" + (pct === "0%" ? " none" : ""), pct));
+      const bar = el("div", "slab-bar");
+      bar.setAttribute("aria-hidden", "true");
+      const fill = el("div");
+      fill.style.width = pct;
+      bar.appendChild(fill);
+      li.appendChild(row);
+      li.appendChild(bar);
       list.appendChild(li);
     });
     const extra = pol.lines.filter((l) => /reach the original|date change/i.test(l));
@@ -66,7 +74,7 @@
       d.appendChild(el("summary", null, f.q));
       const body = el("div", "faq-body");
       body.appendChild(el("p", null, f.a));
-      const ask = el("button", "link", "Ask Sahil about this");
+      const ask = el("button", "faq-ask", "Ask Sahil about this →");
       ask.type = "button";
       ask.setAttribute("data-ask", f.q);
       body.appendChild(ask);

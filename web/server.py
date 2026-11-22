@@ -219,8 +219,8 @@ def create_app(agent_factory=None) -> FastAPI:
         resp.headers["Referrer-Policy"] = "no-referrer"
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["Content-Security-Policy"] = (
-            "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
-            "connect-src 'self'; frame-ancestors 'none'")
+            "default-src 'self'; img-src 'self' data:; style-src 'self' https://fonts.googleapis.com; "
+            "font-src https://fonts.gstatic.com; script-src 'self'; connect-src 'self'; frame-ancestors 'none'")
         return resp
 
     @app.get("/api/health")

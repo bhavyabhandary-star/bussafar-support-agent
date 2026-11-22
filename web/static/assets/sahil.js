@@ -15,12 +15,34 @@
   let pending = "";       // question waiting for the passcode
   let needsPasscode = true;
 
+  // Fixed icon markup (our own constants, never server text).
+  const ICONS = {
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    doc: '<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    booking: '<path d="M4 7h16v4a2 2 0 0 0 0 4v4H4v-4a2 2 0 0 0 0-4z"/><path d="M10 7v12"/>',
+    ticket: '<path d="M9 5H5v14h14v-4"/><path d="M13 5h6v6"/><path d="M19 5l-8 8"/>',
+    contact: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>',
+  };
+  function icon(name, size, cls) {
+    const s = document.createElement("span");
+    s.className = "sahil-ico" + (cls ? " " + cls : "");
+    s.setAttribute("aria-hidden", "true");
+    s.innerHTML = `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
+    return s;
+  }
+  function avatar() {
+    const a = el("span", "sahil-avatar", "S");
+    a.append(el("span", "sahil-online"));
+    return a;
+  }
+
   // ---- build the widget ----
   const launcher = el("button", "sahil-launch");
   launcher.type = "button";
   launcher.setAttribute("aria-label", "Chat with Sahil, BusSafar support");
   launcher.setAttribute("aria-expanded", "false");
-  launcher.append(el("span", "sahil-avatar", "S"), el("span", "sahil-launch-txt", "Ask Sahil"));
+  launcher.append(avatar(), el("span", "sahil-launch-txt", "Ask Sahil"));
 
   const panel = el("section", "sahil-panel");
   panel.setAttribute("role", "dialog");
@@ -29,13 +51,14 @@
 
   const head = el("div", "sahil-head");
   const who = el("div", "sahil-who");
-  who.append(el("span", "sahil-avatar", "S"));
+  who.append(avatar());
   const names = el("div");
   names.append(el("strong", null, "Sahil"), el("span", "sahil-sub", "BusSafar support"));
   who.append(names);
   const newBtn = el("button", "sahil-icon", "New chat");
   newBtn.type = "button";
-  const close = el("button", "sahil-icon sahil-x", "×");
+  const close = el("button", "sahil-icon sahil-x");
+  close.append(icon("close", 16));
   close.type = "button";
   close.setAttribute("aria-label", "Close chat");
   const tools = el("div", "sahil-tools");
@@ -53,7 +76,9 @@
   log.setAttribute("aria-live", "polite");
 
   const gate = el("form", "sahil-gate");
-  gate.append(el("p", null, "Enter the demo passcode to start chatting."));
+  const gateHead = el("div", "sahil-gate-head");
+  gateHead.append(icon("lock", 16, "sahil-badge"), el("p", null, "Enter the demo passcode to start chatting."));
+  gate.append(gateHead);
   const pass = el("input");
   pass.type = "password";
   pass.placeholder = "Passcode";
@@ -99,7 +124,11 @@
     b.append(el("p", null, body));
     if (extra && extra.booking) b.append(bookingCard(extra.booking));
     (extra && extra.ticket_ids || []).forEach((t) => b.append(el("span", "sahil-ticket", "Ticket " + t)));
-    if (sources.length) b.append(el("span", "sahil-src", "From: " + sources.join(" · ")));
+    if (sources.length) {
+      const src = el("span", "sahil-src");
+      src.append(icon("doc", 12), "From: " + sources.join(" · "));
+      b.append(src);
+    }
     row.append(b);
     log.append(row);
     log.scrollTop = log.scrollHeight;
@@ -108,8 +137,24 @@
 
   function bookingCard(bk) {
     const c = el("dl", "sahil-booking");
-    [["PNR", bk.pnr], ["Route", bk.route], ["Date", bk.travel_date], ["Seat", bk.seat], ["Status", bk.status]]
-      .forEach(([k, v]) => { if (v) { c.append(el("dt", null, k), el("dd", k === "Status" ? "st st-" + String(v).toLowerCase().replace(/[^a-z]/g, "") : null, v)); } });
+    const pair = (cls, k, v) => {
+      const d = el("div", cls);
+      d.append(el("dt", null, k), el("dd", null, v));
+      return d;
+    };
+    if (bk.pnr) c.append(pair("bk-pnr", "PNR", bk.pnr));
+    const grid = el("div", "bk-grid");
+    if (bk.route) grid.append(pair("bk-wide", "Route", bk.route));
+    if (bk.travel_date) grid.append(pair(null, "Date", bk.travel_date));
+    if (bk.seat) grid.append(pair(null, "Seat", bk.seat));
+    if (bk.status) {
+      const st = pair("bk-wide bk-status", "Status", bk.status);
+      const dd = st.querySelector("dd");
+      dd.className = "st st-" + String(bk.status).toLowerCase().replace(/[^a-z]/g, "");
+      dd.prepend(el("span", "st-dot"));
+      grid.append(st);
+    }
+    c.append(grid);
     return c;
   }
 
@@ -129,6 +174,12 @@
     return i;
   }
 
+  function formTitle(name, text) {
+    const t = el("strong", "sahil-card-title");
+    t.append(icon(name, 15, "sahil-badge"), text);
+    return t;
+  }
+
   function showForm(type, opts) {
     opts = opts || {};
     if (!session) { pendingForm = { type, opts }; return needsPasscode ? showGate(true) : start("").then(() => showForm(type, opts)); }
@@ -143,7 +194,7 @@
     let submit;
 
     if (type === "booking") {
-      card.append(el("strong", null, "Check booking status"));
+      card.append(formTitle("booking", "Check booking status"));
       const pnr = textInput({ placeholder: "BS123456", maxLength: 12, value: opts.pnr || "", autocomplete: "off" });
       pnr.style.textTransform = "uppercase";
       const last4 = textInput({ type: "password", placeholder: "••••", maxLength: 4, inputMode: "numeric", autocomplete: "off" });
@@ -157,7 +208,7 @@
         ask(`Check my booking. PNR ${p}, phone ends in ${d}`, `PNR ${p} · phone ending ••••`);
       };
     } else if (type === "ticket_status") {
-      card.append(el("strong", null, "Track a support ticket"));
+      card.append(formTitle("ticket", "Track a support ticket"));
       const tid = textInput({ placeholder: "TKT-1001", maxLength: 12, autocomplete: "off" });
       fields = [field("Ticket ID", tid)];
       go.textContent = "Check ticket";
@@ -167,7 +218,7 @@
         ask(`What is the status of TKT-${m[1]}?`);
       };
     } else {
-      card.append(el("strong", null, "Contact a person"));
+      card.append(formTitle("contact", "Contact a person"));
       const sel = el("select");
       const pick = el("option", null, "Choose one"); pick.value = ""; pick.disabled = true; pick.selected = true; sel.append(pick);
       (categories.length ? categories : [{ id: "other", label: "Other" }]).forEach((c) => {
