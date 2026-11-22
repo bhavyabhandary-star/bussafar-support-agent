@@ -37,6 +37,7 @@ XLSX = OUT_DIR / "QA_Test_Status_BusSafar.xlsx"
 JSON_OUT = OUT_DIR / "qa_results.json"
 MD = ROOT / "QA Test_Status BusSafar.md"
 MOBILE_RESULT = OUT_DIR / "ui_mobile_result.json"
+WEB_BROWSER_RESULT = OUT_DIR / "web_browser_result.json"
 
 BOOKINGS = pd.read_csv(config.BOOKINGS_CSV, dtype=str)
 LAST4 = dict(zip(BOOKINGS["pnr"], BOOKINGS["phone_last4"]))
@@ -956,8 +957,156 @@ def ui_cases() -> list[dict]:
     return out
 
 
+def web_cases() -> list[dict]:
+    """Customer website (web/server.py + the floating Sahil chat). Runs in code: no Gemini calls."""
+    from fastapi.testclient import TestClient
+
+    from web import server
+
+    out = []
+    tmp = Path(tempfile.mkdtemp())
+    saved_pass = config.app_passcode
+    config.app_passcode = lambda: "qa-test-passcode"
+    app = server.create_app(lambda: Sahil(None, None, TicketManager(tmp / "web_tickets.csv"), config.BOOKINGS_CSV))
+    c = TestClient(app)
+    js = (server.STATIC / "assets" / "sahil.js").read_text(encoding="utf-8")
+    pnr = "BS597452"
+
+    def unlock():
+        return c.post("/api/session", json={"passcode": "qa-test-passcode"}).json()["session"]
+
+    def chat(s, msg):
+        return c.post("/api/chat", json={"session": s, "message": msg}).json()
+
+    def add(tid, scen, data, exp, sev, fn):
+        try:
+            ok, actual = fn()
+            status = "Pass" if ok else "Fail"
+        except Exception as exc:  # noqa: BLE001
+            actual, status = f"Error: {type(exc).__name__}: {exc}", "Fail"
+        out.append({"id": tid, "module": "Website chat", "scenario": scen, "expected": exp, "severity": sev,
+                    "actual": mask(str(actual))[:600], "status": status, "data": data, "steps": scen,
+                    "preconditions": "FastAPI TestClient, test passcode, no Gemini key"})
+
+    def page():
+        r = c.get("/")
+        return (r.status_code == 200 and "Ask Sahil" in r.text
+                and "default-src 'self'" in r.headers["content-security-policy"]), f"HTTP {r.status_code}, CSP set"
+
+    def help_docs():
+        from rag.document_loader import load_help_docs
+        d = c.get("/api/help").json()
+        chunks = {x.chunk_id: x for x in load_help_docs(config.HELP_DOCS_FILE)}
+        same = all(chunks[f["id"]].text == f"Q: {f['q']}\nA: {f['a']}" for f in d["faqs"])
+        refund = next(p for p in d["policies"] if p["title"] == "Cancellation and refund policy")["lines"][:3]
+        ok = len(d["faqs"]) == 20 and len(d["policies"]) == 5 and same and "90%" in refund[0] and "50%" in refund[1]
+        return ok, f"{len(d['faqs'])} FAQs, {len(d['policies'])} policies, word-for-word={same}; slabs: {refund}"
+
+    def no_hardcoded():
+        html = (server.STATIC / "index.html").read_text(encoding="utf-8")
+        site = (server.STATIC / "assets" / "site.js").read_text(encoding="utf-8")
+        found = [f for f in ("90%", "50%", "₹100", "15 kg") if f in html or f in site]
+        return not found, f"hard-coded figures found: {found or 'none'}"
+
+    def wrong_pass():
+        r = c.post("/api/session", json={"passcode": "nope"})
+        return r.status_code == 401, f"HTTP {r.status_code}: {r.json().get('error')}"
+
+    def no_session():
+        r = c.post("/api/chat", json={"session": "made-up", "message": "hi"})
+        return r.status_code == 401, f"HTTP {r.status_code}"
+
+    def health():
+        h = c.get("/api/health").json()
+        leaked = any(k.lower().endswith("key") and isinstance(v, str) for k, v in h.items())
+        return set(h) >= {"ok", "gemini_key_set", "passcode_required"} and not leaked, json.dumps(h)
+
+    def booking_hint():
+        d = chat(unlock(), "I want to check my booking status")
+        return d["form"] == {"type": "booking"}, f"form={d['form']} | {d['text']}"
+
+    def booking_prefill():
+        s = unlock()
+        chat(s, "I want to check my booking status")
+        d = chat(s, f"My PNR is {pnr}")
+        return d["form"] == {"type": "booking", "pnr": pnr}, f"form={d['form']} | {d['text']}"
+
+    def booking_submit():
+        # The form sends exactly this message (sahil.js) and shows 'phone ending ••••' in the bubble.
+        d = chat(unlock(), f"Check my booking. PNR {pnr}, phone ends in {LAST4[pnr]}")
+        b = d.get("booking") or {}
+        ok = b.get("pnr") == pnr and LAST4[pnr] not in json.dumps(d) and "phone ending ••••" in js
+        return ok, f"booking card={b}"
+
+    def booking_wrong():
+        d = chat(unlock(), f"Check my booking. PNR {pnr}, phone ends in 0000")
+        return not d.get("booking") and ROW[pnr]["passenger_name"] not in d["text"], d["text"]
+
+    def ticket_hint():
+        d = chat(unlock(), "What is the status of my support ticket?")
+        return d["form"] == {"type": "ticket_status"}, f"form={d['form']} | {d['text']}"
+
+    def categories():
+        cats = c.get("/api/help").json()["ticket_categories"]
+        ids = [x["id"] for x in cats]
+        ok = "unresolved_query" not in ids and "safety" in ids and 'pick.value = ""' in js and "Please choose an issue type." in js
+        return ok, f"issue types: {', '.join(x['label'] for x in cats)}; starts at 'Choose one'"
+
+    def contact_empty():
+        r = c.post("/api/ticket", json={"session": unlock(), "category": "other", "description": "hi"})
+        return r.status_code == 400, f"HTTP {r.status_code}: {r.json().get('error')}"
+
+    state = {}
+
+    def contact_create():
+        state["s"] = unlock()
+        d = c.post("/api/ticket", json={"session": state["s"], "category": "lost_item",
+                                        "description": "Left my black backpack on the bus", "pnr": pnr}).json()
+        state["tid"] = (d.get("ticket_ids") or [None])[0]
+        return bool(state["tid"]) and state["tid"] in d["text"] and not d["emergency"], d["text"]
+
+    def contact_again():
+        d = c.post("/api/ticket", json={"session": state["s"], "category": "complaint",
+                                        "description": "Nobody has called me yet"}).json()
+        return d["ticket_ids"] == [] and d.get("existing") == state["tid"], d["text"]
+
+    def contact_safety():
+        d = c.post("/api/ticket", json={"session": state["s"], "category": "safety",
+                                        "description": "The driver is driving dangerously"}).json()
+        return d["emergency"] and "112" in d["text"] and len(d["ticket_ids"]) == 1, d["text"]
+
+    def form_controls():
+        ok = '"Cancel"' in js and '.sahil-card:not(.is-done)' in js and "is-done" in js
+        return ok, "Cancel button present; an unfinished form is replaced by a new one; sent forms are locked"
+
+    try:
+        add("WEB-001", "Open the website", "/", "Page loads with the Ask Sahil launcher and a strict CSP", "High", page)
+        add("WEB-002", "Help Centre content", "/api/help", "BusSafar's 20 FAQs and 5 policies, word for word; 90/50/0 slabs", "Critical", help_docs)
+        add("WEB-003", "No hard-coded policy figures", "index.html, site.js", "Figures come only from /api/help", "High", no_hardcoded)
+        add("WEB-004", "Wrong chat passcode", "wrong passcode", "Access denied (401)", "High", wrong_pass)
+        add("WEB-005", "Chat without a session", "made-up session ID", "Refused (401)", "High", no_session)
+        add("WEB-006", "Health check", "/api/health", "Shows status flags, never a secret", "High", health)
+        add("WEB-007", "Booking form appears", "I want to check my booking status", "In-chat form with PNR and last 4 digits", "High", booking_hint)
+        add("WEB-008", "Booking form keeps the PNR", f"My PNR is {pnr}", "Form opens with the PNR filled in", "Medium", booking_prefill)
+        add("WEB-009", "Booking form submitted", f"{pnr} + ****", "Booking card shown; phone digits never echoed", "Critical", booking_submit)
+        add("WEB-010", "Booking form, wrong digits", f"{pnr} + 0000", "No booking details shown", "Critical", booking_wrong)
+        add("WEB-011", "Ticket ID form appears", "What is the status of my support ticket?", "In-chat Ticket ID form", "High", ticket_hint)
+        add("WEB-012", "Contact form issue types", "/api/help ticket_categories", "Issue types listed; customer must pick one (no Safety default)", "High", categories)
+        add("WEB-013", "Contact form, no description", "description 'hi'", "Asks to describe the issue (400)", "Medium", contact_empty)
+        add("WEB-014", "Contact form creates a ticket", "Lost item + description", "Ticket ID shown with the 24-hour promise", "High", contact_create)
+        add("WEB-015", "Second contact form, same chat", "Complaint", "Returns the open ticket; no duplicate", "High", contact_again)
+        add("WEB-016", "Contact form, safety issue", "Safety + description", "Own ticket plus 'call 112' advice", "Critical", contact_safety)
+        add("WEB-017", "Form controls", "sahil.js", "Cancel button; one open form at a time", "Medium", form_controls)
+    finally:
+        config.app_passcode = saved_pass
+    if WEB_BROWSER_RESULT.exists():
+        for r in json.loads(WEB_BROWSER_RESULT.read_text(encoding="utf-8")):
+            out.append({"module": "Website chat", "preconditions": "Headless Chromium, local server, no Gemini key", **r})
+    return out
+
+
 # --------------------------------------------------------------------------- #
-ORDER = ["AG", "RAG", "POL", "DEL", "SAF", "ESC", "CONV", "BOOK", "BST", "TKT", "SEC", "UI", "E2E"]
+ORDER = ["AG", "RAG", "POL", "DEL", "SAF", "ESC", "CONV", "BOOK", "BST", "TKT", "SEC", "UI", "WEB", "E2E"]
 
 
 def sort_key(row):
@@ -1058,7 +1207,7 @@ def write_md(rows: list[dict], meta: dict):
             "python -m pytest -q                      # unit + UI tests (offline, no API calls)",
             "RUN_LIVE_TESTS=1 python -m pytest -q tests/test_live_agent.py   # live Gemini checks (optional)",
             "python tests/qa/run_qa.py                # full QA plan, live Gemini, paced at 12 calls/min",
-            "python tests/qa/run_qa.py --only POL,DEL # re-run some modules (rewrites the report with only those rows)",
+            "python tests/qa/run_qa.py --only POL,DEL # re-run some modules (other rows keep their latest result)",
             "python tests/qa/run_qa.py --offline      # no API calls; model-dependent cases show Blocked",
             "```", "",
             "A full live run makes about 95 Gemini calls (roughly 10 minutes on the free tier; the free daily quota "
@@ -1066,7 +1215,8 @@ def write_md(rows: list[dict], meta: dict):
             "plus 4 demo rows for Pending, Failed, Refunded and No-Show); phone digits are shown as `****` in every "
             "report. Conversation quality, booking status and support ticket cases run in code, so they pass or "
             "fail even offline. UI-014 (mobile) is checked with headless Chromium at 375×812 and read from "
-            "`tests/qa/ui_mobile_result.json`.", "",
+            "`tests/qa/ui_mobile_result.json`. Website chat cases (WEB) run the FastAPI site in code with no Gemini "
+            "calls; WEB-018 to WEB-020 come from a headless Chromium run saved in `tests/qa/web_browser_result.json`.", "",
             "## Test cases", ""]
     for m in modules:
         out += [f"### {m}", "", "| ID | Scenario | Input | Expected result | Priority | Latest status |",
@@ -1114,6 +1264,15 @@ CLARIFICATIONS = [
      "Only staff: the sidebar 'Staff: update a ticket' form or `python manage_tickets.py set TKT-1001 Done note`. "
      "Customers can only check a status, by ticket ID, in chat or the sidebar. Sahil shows the status, its meaning "
      "and the latest staff note, never the original message or booking details."),
+    ("In-chat forms on the website",
+     "The website chat shows small forms instead of asking the customer to type details: PNR plus last 4 phone "
+     "digits (shown as •••• in the chat), Ticket ID, and Contact a person (issue type, optional PNR, description). "
+     "They open from the chips, and by themselves when Sahil asks for a PNR, phone digits or ticket ID, or offers "
+     "a person. The contact form uses the same one-ticket-per-chat rule as the chat. The booking and ticket forms "
+     "use no Gemini calls."),
+    ("One service on Render",
+     "Render runs one web service, bussafar-support (`uvicorn web.server:app`), that serves both the website and "
+     "Sahil's chat. The Streamlit app (app.py) is still in the repo for local use and the UI cases above."),
     ("'Status of my ticket' without the word 'support'",
      "Read as a bus ticket (booking), so Sahil asks for the PNR and last 4 phone digits. 'Support ticket', "
      "'complaint ticket' or a TKT- ID is read as a support ticket."),
@@ -1195,6 +1354,23 @@ def main():
                          "Status": u["status"], "Defect ID": f"DEF-{u['id']}" if u["status"] == "Fail" else "",
                          "Severity": u["severity"]})
             print(f"{u['id']}: {u['status']}", flush=True)
+
+    if not args.only or "WEB" in args.only:
+        for u in web_cases():
+            rows.append({"Test Case ID": u["id"], "Module": u["module"], "Test scenario": u["scenario"],
+                         "Preconditions": u["preconditions"], "Test steps": u["steps"], "Test data": u["data"],
+                         "Expected result": u["expected"], "Actual result": u["actual"], "Status": u["status"],
+                         "Defect ID": f"DEF-{u['id']}" if u["status"] == "Fail" else "", "Severity": u["severity"]})
+            print(f"{u['id']}: {u['status']}", flush=True)
+
+    if args.only and JSON_OUT.exists():
+        # Partial re-run: keep the other modules' latest results and replace only the re-run rows.
+        prev = json.loads(JSON_OUT.read_text(encoding="utf-8"))
+        fresh = {r["Test Case ID"] for r in rows}
+        prefixes = tuple(p.strip() + "-" for p in args.only.split(","))
+        rows = [r for r in prev["rows"] if r["Test Case ID"] not in fresh and not r["Test Case ID"].startswith(prefixes)] + rows
+        started = prev["meta"]["started"]
+        mode = f"{prev['meta']['mode']}; {args.only} re-run {time.strftime('%Y-%m-%d %H:%M')} ({mode})"
 
     meta = {"started": started, "finished": time.strftime("%Y-%m-%d %H:%M"), "model": config.CHAT_MODEL, "mode": mode}
     JSON_OUT.write_text(json.dumps({"meta": meta, "rows": rows}, ensure_ascii=False, indent=1), encoding="utf-8")

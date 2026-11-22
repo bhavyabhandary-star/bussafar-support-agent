@@ -1,0 +1,32 @@
+[
+ {
+  "id": "WEB-018",
+  "scenario": "Booking form in the browser",
+  "data": "BS597452 + ****",
+  "expected": "Fields accept 'bs 597452', digits are masked, booking card appears",
+  "severity": "High",
+  "steps": "Tap Check my booking, fill PNR and last 4 digits, Check status",
+  "status": "Pass",
+  "actual": "Bubble shows 'PNR BS597452 · phone ending ••••'; booking card shown; digits not on screen: true"
+ },
+ {
+  "id": "WEB-019",
+  "scenario": "Contact form in the browser",
+  "data": "Lost item + description",
+  "expected": "Must pick an issue type; ticket ID shown after Create ticket",
+  "severity": "High",
+  "steps": "Tap Talk to a person, submit empty, then fill and submit",
+  "status": "Pass",
+  "actual": "Empty form says 'Please choose an issue type.'; after filling, a ticket ID is shown"
+ },
+ {
+  "id": "WEB-020",
+  "scenario": "Forms on a phone (375x812)",
+  "data": "375x812 viewport",
+  "expected": "Form fits the screen; Cancel closes it",
+  "severity": "Medium",
+  "steps": "Open the Ticket ID form at phone size, then Cancel",
+  "status": "Pass",
+  "actual": "Ticket form fits 375px (x=14, w=295); no sideways scroll: true; Cancel removes it: true"
+ }
+]
