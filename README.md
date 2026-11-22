@@ -124,6 +124,10 @@ The live tests (39) call the real Gemini API. They check that each section is re
 RUN_LIVE_TESTS=1 pytest tests/test_live_agent.py -v
 ```
 
+### Evals
+
+`python -m evals.run_evals` scores Sahil against 85 scenarios (grounded answers, policy edge cases, out of scope, bookings, tickets, safety, red-team and conversation quality), with traces, thresholds and a report in `evals/REPORT.md`. Add `--live` to include the scenarios that need Gemini. See [evals/README.md](evals/README.md).
+
 ### Manual check script (from the project brief)
 
 | Send | Sahil should |
