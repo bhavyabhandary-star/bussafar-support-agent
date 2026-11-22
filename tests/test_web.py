@@ -140,12 +140,64 @@ def test_contact_form_creates_one_ticket_per_chat(client):
     s = unlock(client)
     assert client.post("/api/ticket", json={"session": s, "description": "hi"}).status_code == 400
     assert client.post("/api/ticket", json={"session": "bad", "description": "My bag is lost"}).status_code == 401
-    d = client.post("/api/ticket", json={"session": s, "category": "lost_item",
-                                         "description": "Left my bag on the bus", "pnr": "BS558954"}).json()
+    d = client.post("/api/ticket", json={"session": s, "category": "lost_item", "description": "Left my bag on the bus",
+                                         "pnr": "bs 558954", "last4": "2087"}).json()
     assert len(d["ticket_ids"]) == 1 and d["ticket_ids"][0] in d["text"] and not d["emergency"]
-    again = client.post("/api/ticket", json={"session": s, "category": "complaint",
-                                             "description": "Still waiting for help"}).json()
+    again = client.post("/api/ticket", json={"session": s, "category": "complaint", "description": "Still waiting for help",
+                                             "pnr": "BS558954", "last4": "2087"}).json()
     assert again["ticket_ids"] == [] and again["existing"] == d["ticket_ids"][0]
     sos = client.post("/api/ticket", json={"session": s, "category": "safety",
                                            "description": "The driver is driving dangerously"}).json()
     assert sos["emergency"] and "112" in sos["text"] and len(sos["ticket_ids"]) == 1
+
+
+# --- PNR required and verified for tickets; ticket IDs checked against existing tickets -------
+def test_contact_form_requires_a_real_pnr(client, tickets):
+    s = unlock(client)
+    base = {"session": s, "category": "lost_item", "description": "Left my bag on the bus"}
+    r = client.post("/api/ticket", json=base)
+    assert r.status_code == 400 and "PNR" in r.json()["error"]
+    r = client.post("/api/ticket", json={**base, "pnr": "BS000000", "last4": "1234"})      # no such booking
+    assert r.status_code == 400 and "couldn't find" in r.json()["error"]
+    r = client.post("/api/ticket", json={**base, "pnr": "BS558954", "last4": "0000"})      # real PNR, wrong phone
+    assert r.status_code == 400 and "couldn't find" in r.json()["error"]
+    r = client.post("/api/ticket", json={**base, "pnr": "@#$%", "last4": "1234"})
+    assert r.status_code == 400
+    assert tickets.list_tickets() == []                                                   # nothing was saved
+    ok = client.post("/api/ticket", json={**base, "pnr": "BS558954", "last4": "2087"}).json()
+    assert tickets.get_ticket(ok["ticket_ids"][0])["pnr"] == "BS558954"
+
+
+def test_wrong_pnr_attempts_are_capped(client):
+    s = unlock(client)
+    base = {"session": s, "category": "lost_item", "description": "Left my bag on the bus"}
+    for _ in range(config.MAX_FAILED_LOOKUPS):
+        assert client.post("/api/ticket", json={**base, "pnr": "BS558954", "last4": "0000"}).status_code == 400
+    assert client.post("/api/ticket", json={**base, "pnr": "BS558954", "last4": "2087"}).status_code == 429
+
+
+def test_safety_ticket_never_blocked_by_missing_pnr(client, tickets):
+    s = unlock(client)
+    r = client.post("/api/ticket", json={"session": s, "category": "safety", "description": "A man is harassing me"}).json()
+    assert r["emergency"] and "112" in r["text"] and tickets.get_ticket(r["ticket_ids"][0])["pnr"] == ""
+    bad = client.post("/api/ticket", json={"session": s, "category": "safety", "description": "Help please",
+                                           "pnr": "BS000000", "last4": "1111"})
+    assert bad.status_code == 400   # a PNR, if given, must still be real
+
+
+def test_ticket_id_checked_against_existing_tickets(client, tickets):
+    s = unlock(client)
+    tickets.create_ticket("I left my bag", "lost_item")
+    ok = client.post("/api/ticket/check", json={"session": s, "ticket_id": "tkt 1001"})
+    assert ok.status_code == 200 and ok.json() == {"ticket_id": "TKT-1001", "status": "Pending"}
+    missing = client.post("/api/ticket/check", json={"session": s, "ticket_id": "TKT-1234"})
+    assert missing.status_code == 404 and "TKT-1234" in missing.json()["error"]
+    assert client.post("/api/ticket/check", json={"session": s, "ticket_id": "hello"}).status_code == 400
+    assert client.post("/api/ticket/check", json={"session": "forged", "ticket_id": "TKT-1001"}).status_code == 401
+
+
+def test_unknown_ticket_ids_are_capped(client):
+    s = unlock(client)
+    codes = [client.post("/api/ticket/check", json={"session": s, "ticket_id": f"TKT-9{i:03d}"}).status_code
+             for i in range(config.MAX_FAILED_LOOKUPS + 1)]
+    assert codes[:-1] == [404] * config.MAX_FAILED_LOOKUPS and codes[-1] == 429

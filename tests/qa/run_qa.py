@@ -1061,19 +1061,43 @@ def web_cases() -> list[dict]:
     def contact_create():
         state["s"] = unlock()
         d = c.post("/api/ticket", json={"session": state["s"], "category": "lost_item",
-                                        "description": "Left my black backpack on the bus", "pnr": pnr}).json()
+                                        "description": "Left my black backpack on the bus", "pnr": pnr,
+                                        "last4": LAST4[pnr]}).json()
         state["tid"] = (d.get("ticket_ids") or [None])[0]
         return bool(state["tid"]) and state["tid"] in d["text"] and not d["emergency"], d["text"]
 
     def contact_again():
         d = c.post("/api/ticket", json={"session": state["s"], "category": "complaint",
-                                        "description": "Nobody has called me yet"}).json()
+                                        "description": "Nobody has called me yet", "pnr": pnr,
+                                        "last4": LAST4[pnr]}).json()
         return d["ticket_ids"] == [] and d.get("existing") == state["tid"], d["text"]
 
     def contact_safety():
         d = c.post("/api/ticket", json={"session": state["s"], "category": "safety",
                                         "description": "The driver is driving dangerously"}).json()
         return d["emergency"] and "112" in d["text"] and len(d["ticket_ids"]) == 1, d["text"]
+
+    def contact_no_pnr():
+        r = c.post("/api/ticket", json={"session": unlock(), "category": "lost_item", "description": "Left my bag on the bus"})
+        return r.status_code == 400 and "PNR" in r.json().get("error", ""), f"HTTP {r.status_code}: {r.json().get('error')}"
+
+    def contact_bad_pnr():
+        s = unlock()
+        a = c.post("/api/ticket", json={"session": s, "category": "lost_item", "description": "Left my bag on the bus",
+                                        "pnr": "BS000000", "last4": "1234"})
+        b = c.post("/api/ticket", json={"session": s, "category": "lost_item", "description": "Left my bag on the bus",
+                                        "pnr": pnr, "last4": "0000"})
+        ok = a.status_code == 400 and b.status_code == 400 and "ticket_ids" not in a.json() and "ticket_ids" not in b.json()
+        return ok, f"unknown PNR: HTTP {a.status_code} {a.json().get('error')} | wrong digits: HTTP {b.status_code}"
+
+    def ticket_id_known():
+        tid = state.get("tid") or "TKT-1001"
+        r = c.post("/api/ticket/check", json={"session": unlock(), "ticket_id": tid.lower().replace("-", " ")})
+        return r.status_code == 200 and r.json().get("ticket_id") == tid, f"HTTP {r.status_code}: {r.json()}"
+
+    def ticket_id_unknown():
+        r = c.post("/api/ticket/check", json={"session": unlock(), "ticket_id": "TKT-9876"})
+        return r.status_code == 404 and "TKT-9876" in r.json().get("error", ""), f"HTTP {r.status_code}: {r.json().get('error')}"
 
     def form_controls():
         ok = '"Cancel"' in js and '.sahil-card:not(.is-done)' in js and "is-done" in js
@@ -1097,6 +1121,13 @@ def web_cases() -> list[dict]:
         add("WEB-015", "Second contact form, same chat", "Complaint", "Returns the open ticket; no duplicate", "High", contact_again)
         add("WEB-016", "Contact form, safety issue", "Safety + description", "Own ticket plus 'call 112' advice", "Critical", contact_safety)
         add("WEB-017", "Form controls", "sahil.js", "Cancel button; one open form at a time", "Medium", form_controls)
+        add("WEB-021", "Contact form, no PNR", "Lost item, PNR empty", "Asks for the PNR (400); no ticket", "High", contact_no_pnr)
+        add("WEB-022", "Contact form, PNR not a real booking", "BS000000 / real PNR + 0000",
+            "Refused (400); no ticket created", "Critical", contact_bad_pnr)
+        add("WEB-023", "Track ticket, existing ID", "ticket from WEB-014, typed as 'tkt 1001'", "Ticket found; status shown",
+            "High", ticket_id_known)
+        add("WEB-024", "Track ticket, unknown ID", "TKT-9876", "Refused (404): 'no ticket TKT-9876'; form stays open",
+            "High", ticket_id_unknown)
     finally:
         config.app_passcode = saved_pass
     if WEB_BROWSER_RESULT.exists():
@@ -1266,7 +1297,7 @@ CLARIFICATIONS = [
      "and the latest staff note, never the original message or booking details."),
     ("In-chat forms on the website",
      "The website chat shows small forms instead of asking the customer to type details: PNR plus last 4 phone "
-     "digits (shown as •••• in the chat), Ticket ID, and Contact a person (issue type, optional PNR, description). "
+     "digits (shown as •••• in the chat), Ticket ID, and Contact a person (issue type, PNR + last 4 digits checked against the booking, description). "
      "They open from the chips, and by themselves when Sahil asks for a PNR, phone digits or ticket ID, or offers "
      "a person. The contact form uses the same one-ticket-per-chat rule as the chat. The booking and ticket forms "
      "use no Gemini calls."),

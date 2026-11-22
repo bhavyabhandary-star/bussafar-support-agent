@@ -13,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import re
 import secrets
 import threading
 import time
@@ -26,6 +27,7 @@ from pydantic import BaseModel
 
 import config
 from agent.sahil import Sahil
+from booking.booking_lookup import get_booking_status as lookup_booking
 from rag.document_loader import load_help_docs
 from support.ticket_manager import CATEGORIES, TicketError, TicketManager
 
@@ -102,6 +104,17 @@ class SessionStore:
             self._items[sid] = (agent, time.time(), turns + 1)
             self._items.move_to_end(sid)
             return agent
+
+    def peek(self, sid: str) -> Sahil | None:
+        """The chat's Sahil without using up a turn (for form checks)."""
+        if not verify(sid):
+            return None
+        with self._lock:
+            item = self._items.get(sid)
+            if item is None:
+                agent = self.factory()
+                self._items[sid] = item = (agent, time.time(), 0)
+            return item[0]
 
     def _prune(self) -> None:
         now = time.time()
@@ -190,6 +203,12 @@ class TicketIn(BaseModel):
     category: str = "other"
     description: str = ""
     pnr: str = ""
+    last4: str = ""
+
+
+class TicketCheckIn(BaseModel):
+    session: str
+    ticket_id: str = ""
 
 
 class ChatIn(BaseModel):
@@ -277,6 +296,21 @@ def create_app(agent_factory=None) -> FastAPI:
         if len(desc) < 5:
             raise HTTPException(400, "Please describe the issue before creating a ticket.")
         category = body.category if body.category in CATEGORIES else "other"
+        # PNR is required (safety is the one exception: nobody in danger should be blocked by a form)
+        # and must belong to a real booking, verified with the phone digits like every booking lookup,
+        # so a ticket can't be raised against someone else's booking or used to probe which PNRs exist.
+        pnr = ""
+        if body.pnr.strip() or category != "safety":
+            if agent.failed_lookups >= config.MAX_FAILED_LOOKUPS:
+                raise HTTPException(429, "Too many unsuccessful booking checks. Please choose 'Safety concern' "
+                                         "if you are in danger, or try again later.")
+            if not body.pnr.strip():
+                raise HTTPException(400, "Please enter the PNR of your booking (BS followed by 6 digits).")
+            check = lookup_booking(body.pnr, body.last4, config.BOOKINGS_CSV)
+            if not check["found"]:
+                agent.failed_lookups += check.get("error") == "not_found"
+                raise HTTPException(400, check["message"])
+            pnr = check["booking"]["pnr"]
         existing = agent._open_session_ticket()
         if existing and category != "safety":
             text = (f"You already have an open ticket, {existing}, so I haven't created another one. "
@@ -284,7 +318,7 @@ def create_app(agent_factory=None) -> FastAPI:
             agent._remember(f"[Contact form] {desc}", text)
             return {"text": text, "ticket_ids": [], "existing": existing}
         try:
-            tid = agent.create_manual_ticket(desc, category, body.pnr.strip() or None)
+            tid = agent.create_manual_ticket(desc, category, pnr or None)
         except TicketError as exc:
             raise HTTPException(400, str(exc))
         if category == "safety":
@@ -297,6 +331,24 @@ def create_app(agent_factory=None) -> FastAPI:
         agent._remember(f"[Contact form] {desc}", text)
         log.info('{"event":"contact_form","category":"%s","ticket":"%s"}', category, tid)
         return {"text": text, "ticket_ids": [tid], "emergency": category == "safety"}
+
+    @app.post("/api/ticket/check")
+    def check_ticket(body: TicketCheckIn, request: Request):
+        """The 'Track ticket' form: is this a real ticket ID? (status only; never the ticket text)"""
+        limiter.check("chat", visitor(request), CHAT_LIMIT)
+        agent = sessions().peek(body.session)
+        if agent is None:
+            raise HTTPException(401, "Your chat expired. Please start a new chat.")
+        m = re.fullmatch(r"(?:TKT[\s-]?)?(\d{4,6})", body.ticket_id.strip(), re.IGNORECASE)
+        if not m:
+            raise HTTPException(400, "Ticket IDs look like TKT-1001.")
+        tid = f"TKT-{m[1]}"
+        result = agent._tool_ticket_status({"ticket_id": tid})  # counts unknown IDs and stops after 5
+        if not result.get("found"):
+            if "Too many" in result.get("message", ""):
+                raise HTTPException(429, "Too many unknown ticket IDs in this chat. Please check your ticket ID.")
+            raise HTTPException(404, f"There's no ticket {tid}. Please check the ID from your confirmation.")
+        return {"ticket_id": result["ticket_id"], "status": result["status"]}
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException):

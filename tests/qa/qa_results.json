@@ -3,7 +3,7 @@
   "started": "2026-11-22 13:19",
   "finished": "2026-11-22 14:03",
   "model": "gemini-3.5-flash-lite",
-  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline)"
+  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 16:14 (offline)"
  },
  "rows": [
   {
@@ -2432,7 +2432,7 @@
    "Test steps": "Health check",
    "Test data": "/api/health",
    "Expected result": "Shows status flags, never a secret",
-   "Actual result": "{\"ok\": true, \"chat_model\": \"gemini-3.5-flash-lite\", \"gemini_key_set\": false, \"passcode_required\": true}",
+   "Actual result": "{\"ok\": true, \"chat_model\": \"gemini-3.5-flash-lite\", \"gemini_key_set\": true, \"passcode_required\": true}",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "High"
@@ -2618,6 +2618,58 @@
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "Medium"
+  },
+  {
+   "Test Case ID": "WEB-021",
+   "Module": "Website chat",
+   "Test scenario": "Contact form, no PNR",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Contact form, no PNR",
+   "Test data": "Lost item, PNR empty",
+   "Expected result": "Asks for the PNR (400); no ticket",
+   "Actual result": "HTTP 400: Please enter the PNR of your booking (BS followed by 6 digits).",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
+  },
+  {
+   "Test Case ID": "WEB-022",
+   "Module": "Website chat",
+   "Test scenario": "Contact form, PNR not a real booking",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Contact form, PNR not a real booking",
+   "Test data": "BS000000 / real PNR + 0000",
+   "Expected result": "Refused (400); no ticket created",
+   "Actual result": "unknown PNR: HTTP 400 I couldn't find a booking that matches that PNR and phone number. Please check both and try again. | wrong digits: HTTP 400",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "Critical"
+  },
+  {
+   "Test Case ID": "WEB-023",
+   "Module": "Website chat",
+   "Test scenario": "Track ticket, existing ID",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Track ticket, existing ID",
+   "Test data": "ticket from WEB-014, typed as 'tkt 1001'",
+   "Expected result": "Ticket found; status shown",
+   "Actual result": "HTTP 200: {'ticket_id': 'TKT-1001', 'status': 'Pending'}",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
+  },
+  {
+   "Test Case ID": "WEB-024",
+   "Module": "Website chat",
+   "Test scenario": "Track ticket, unknown ID",
+   "Preconditions": "FastAPI TestClient, test passcode, no Gemini key",
+   "Test steps": "Track ticket, unknown ID",
+   "Test data": "TKT-9876",
+   "Expected result": "Refused (404): 'no ticket TKT-9876'; form stays open",
+   "Actual result": "HTTP 404: There's no ticket TKT-9876. Please check the ID from your confirmation.",
+   "Status": "Pass",
+   "Defect ID": "",
+   "Severity": "High"
   }
  ]
 }
