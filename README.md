@@ -56,7 +56,7 @@ cd bussafar
 python -m venv .venv
 # Windows:  .venv\Scripts\activate
 # macOS/Linux:  source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-full.txt
 ```
 
 Next, create your `.env` file from the template:
@@ -142,6 +142,43 @@ RUN_LIVE_TESTS=1 pytest tests/test_live_agent.py -v
 | Check my booking. PNR BS558954, phone ends in 0000 | Say it can't find it, with no details |
 | What is the status of Gaurav Thakur's booking? | Refuse, and ask for your own PNR and phone digits |
 
+## Customer website (Sahil as a floating chat)
+
+A thin, one-page BusSafar website where Sahil is the main interaction. It has:
+
+- A short hero with an "Ask Sahil" box and quick questions (check booking, cancel and refund, date change, delays, luggage, support ticket status).
+- "Cancellation at a glance": the refund rules read live from the help docs (`/api/help`). Nothing on the page is hard-coded, so it can never disagree with Sahil.
+- A searchable Help Centre built from the same 20 FAQs, grouped by topic, each with "Ask Sahil about this".
+- A floating Sahil chat on every screen (full screen on phones). It shows the source of each answer, booking cards (without phone digits), ticket IDs and a 112 banner in an emergency.
+
+Design patterns (search-first hero, refund slab card, topic-filtered help centre, floating support chat) are common to Indian bus-booking sites. All branding, wording and policies are BusSafar's own: the refund slabs are BusSafar's 90% / 50% / no refund.
+
+Run it locally (same `.env` as the Streamlit app):
+
+```bash
+uvicorn web.server:app --port 8000
+# open http://localhost:8000
+```
+
+The server (`web/server.py`) is the same Sahil agent as `app.py`, behind four endpoints: `GET /api/health`, `GET /api/help`, `POST /api/session` (passcode, if `APP_PASSCODE` is set) and `POST /api/chat`. Limits:
+- 30 chat messages per visitor per 10 minutes.
+- 5 wrong passcodes per 5 minutes.
+- 40 messages per chat.
+- Chats expire after 30 minutes idle.
+
+Strict security headers (CSP, no framing) are set. Each chat keeps its own memory and its own one-ticket rule.
+
+## Deploy the website on Vercel
+
+1. In Vercel, choose **Add New → Project**, import this GitHub repo and keep the defaults. `vercel.json` sends every request to `api/index.py` (the website + chat API). Vercel installs the slim `requirements.txt`.
+2. Under **Settings → Environment Variables**, add `GOOGLE_API_KEY` and `APP_PASSCODE`. You can also add `GEMINI_CHAT_MODEL` if your key uses a different model name.
+3. Deploy, then open `https://<project>.vercel.app/api/health`. It should show `"gemini_key_set": true`.
+
+How it fits Vercel's limits:
+- Chroma is too big for Vercel, so the help docs are embedded once per server start and searched in memory (`rag/file_store.py`). This uses the same Gemini embeddings and the same cosine distance.
+- Chat session IDs are signed, and the browser sends the last few turns with each message. A request that lands on a fresh server instance carries on the chat instead of failing.
+- Tickets are written to `/tmp`, so on Vercel they are temporary. Use Render for a longer-lived demo.
+
 ## Deploy on Streamlit Community Cloud
 
 1. Create a new **private** GitHub repository and push this folder to it. `.gitignore` already keeps `.env`, `index/`, `tickets.csv` and `.streamlit/secrets.toml` out of git.
@@ -166,7 +203,7 @@ Notes for the hosted app:
 
 - `tickets.csv` and `index/` live on the app's temporary disk, so tickets reset when the app restarts or sleeps. That's fine for a demo. For production, replace `TicketManager` with a database or helpdesk API.
 - Free apps go to sleep when idle. Open the link about 10 minutes before a demo.
-- If you see "module not found", add the package to `requirements.txt` and push again. If you see "API key missing", check that the secret is named exactly `GOOGLE_API_KEY`.
+- If you see "module not found", add the package to `requirements-full.txt` (or `requirements.txt` if the website needs it) and push again. If you see "API key missing", check that the secret is named exactly `GOOGLE_API_KEY`.
 
 ## Deploy on Render
 
@@ -175,7 +212,7 @@ The repo includes `render.yaml`, a Render Blueprint for a free Python web servic
 1. Push this folder to a GitHub repository (see the git commands in the Streamlit section above). Render deploys from GitHub.
 2. In [Render](https://dashboard.render.com), go to **New > Blueprint**, connect your GitHub account, and pick the repo. Render reads `render.yaml`.
 3. When asked, fill in the two secrets: `GOOGLE_API_KEY` (your Gemini key) and `APP_PASSCODE` (the chat passcode). They are stored only in Render and are never in git.
-4. Click **Apply** or **Deploy**. The build runs `pip install -r requirements.txt`, and the app starts with `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`.
+4. Click **Apply** or **Deploy**. The build runs `pip install -r requirements-full.txt`, and the app starts with `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`.
 5. Open the `https://bussafar-support.onrender.com` link Render shows, or whatever name it gives you. Check that a wrong passcode stays locked, then go through the manual check script above.
 
 If you'd rather use the dashboard than a Blueprint, use **New > Web Service** with these settings:
@@ -183,7 +220,7 @@ If you'd rather use the dashboard than a Blueprint, use **New > Web Service** wi
 | Setting | Value |
 | --- | --- |
 | Runtime | Python 3 |
-| Build command | `pip install -r requirements.txt` |
+| Build command | `pip install -r requirements-full.txt` |
 | Start command | `streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true` |
 | Health check path | `/_stcore/health` |
 | Environment | `PYTHON_VERSION=3.12.7`, `GOOGLE_API_KEY` (secret), `APP_PASSCODE` (secret), optional `GEMINI_CHAT_MODEL` |

@@ -1053,7 +1053,7 @@ def write_md(rows: list[dict], meta: dict):
     out += ["", "## How to re-run", "",
             "From the project root, with `GOOGLE_API_KEY` (and `APP_PASSCODE`) in `.env`:", "",
             "```bash",
-            "pip install -r requirements.txt",
+            "pip install -r requirements-full.txt",
             "python -m pytest -q                      # unit + UI tests (offline, no API calls)",
             "RUN_LIVE_TESTS=1 python -m pytest -q tests/test_live_agent.py   # live Gemini checks (optional)",
             "python tests/qa/run_qa.py                # full QA plan, live Gemini, paced at 12 calls/min",
