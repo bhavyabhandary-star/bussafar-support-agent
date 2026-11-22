@@ -208,6 +208,11 @@ _FACT_TOKEN = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|m
 _NUMERIC_FACT = re.compile(r"₹\s?\d[\d,]*|\d+(?:\.\d+)?\s?(?:%|kg|hours?|days?|minutes?)", re.IGNORECASE)
 
 
+_UNSUPPORTED_CLAIM = re.compile(
+    r"\b(?:we|bussafar)\s+(?:do(?:es)?\s+not|don'?t|doesn'?t|currently\s+do\s+not)\s+(?:offer|provide|have|sell|support)\b"
+    r"|\b(?:we|bussafar)\s+(?:offer|provide)s?\s+(?!only)", re.IGNORECASE)
+
+
 def ungrounded_facts(reply: str, chunks: list[RetrievedChunk], message: str = "") -> list[str]:
     """Numbers (₹, %, kg, hours, days, minutes) in the reply that no retrieved section or the customer stated.
 
@@ -300,8 +305,14 @@ class Sahil:
         return None
 
     def _tool_ticket(self, args: dict, message: str) -> dict:
+        category = str(args.get("category", "")).lower()
+        amount = guardrails.requested_refund_amount(message)
+        if category == "refund_dispute" and amount is not None and amount <= guardrails.REFUND_ESCALATION_LIMIT:
+            return {"success": False, "message": (
+                f"Refunds of ₹{guardrails.REFUND_ESCALATION_LIMIT:,} or less are not escalated on the amount alone. "
+                "Do not create a ticket; explain the cancellation policy bands from the context instead.")}
         existing = self._open_session_ticket()
-        if existing and str(args.get("category", "")).lower() != "safety":
+        if existing and category != "safety":
             # One ticket per chat: repeat requests point back to the open ticket.
             return {"success": False, "already_open": True, "ticket_id": existing,
                     "message": (f"This customer already has open ticket {existing}. Do not create another. "
@@ -624,6 +635,10 @@ class Sahil:
         if not clean.strip():
             clean = config.FALLBACK_MESSAGE
         flags_extra: list[str] = []
+        if not chunks and not new_tickets and _UNSUPPORTED_CLAIM.search(clean):
+            # "We do not offer travel insurance" with no help-doc section behind it is a guess.
+            clean = config.FALLBACK_MESSAGE
+            flags_extra.append("unsupported_claim_replaced")
         bad_facts = ungrounded_facts(clean, chunks, msg) if not new_tickets and not booking else []
         if bad_facts:
             # Never show a figure the help docs don't contain: quote the matching section instead.
