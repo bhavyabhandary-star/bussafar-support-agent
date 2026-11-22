@@ -11,3 +11,4 @@ venv/
 env.txt
 tickets_history.csv
 tickets.csv.tmp
+.vercel/

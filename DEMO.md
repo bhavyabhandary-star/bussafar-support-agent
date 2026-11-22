@@ -37,7 +37,7 @@ Open the website and click **Ask Sahil** (or type in the big ask box). Enter the
 1. `I left my bag on the bus`. Expect: a ticket **TKT-…** and "a person will reply within 24 hours".
 2. Send it again. Expect: the same ticket ID and no second ticket (one ticket per chat).
 3. `What's the status of TKT-…?` (use the ID). Expect: **Pending**, waiting for a support specialist.
-4. Optional staff side: in the Streamlit app sidebar, choose **Staff: update a ticket** → In progress, add a note, and save. Ask Sahil again and it now says **In progress** with the note.
+4. Optional staff side (laptop demo only, where the chat and the staff tools share one tickets file): in the Streamlit app sidebar, choose **Staff: update a ticket** → In progress and add a note (or run `python manage_tickets.py set TKT-… "In progress" "operator contacted"`). Ask Sahil again and it now says **In progress** with the note.
 
 ## 5. Safety and guardrails (1 min)
 1. `A man on the bus is harassing me`. Expect: call **112**, use SOS, and a **high-priority** safety ticket.
