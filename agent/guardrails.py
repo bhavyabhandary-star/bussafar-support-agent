@@ -43,7 +43,7 @@ _INJECTION_PATTERNS = [
     r"\b(ignore|disregard|forget|override|bypass|skip)\b.{0,40}\b(rules?|instructions?|guidelines?|prompts?|polic(y|ies)|restrictions?|guardrails?|programming)\b",
     r"\b(system|developer|hidden|initial|original)\s+(prompt|message|instructions?)\b",
     r"\b(reveal|show|print|repeat|display|tell me|give me|what (is|are))\b.{0,30}\b(your )?(prompt|instructions|system message|configuration|config)\b",
-    r"\b(api[\s_-]?keys?|secret keys?|access tokens?|\.env|environment variables?|app passcode|your passcode)\b",
+    r"\b(api[\s_-]?keys?|secret keys?|access tokens?|\.env|environment variables?|app[\s_-]?passcode|your passcode|google_api_key)\b",
     r"\byou are now\b|\bnew instructions\b|\bfrom now on you\b",
     r"\b(jailbreak|DAN mode|developer mode|god mode|sudo mode)\b",
     r"\b(pretend|act|behave|roleplay)\b.{0,20}\b(as|like|to be)\b.{0,30}\b(admin|developer|unrestricted|different|another|evil|hacker|system)\b",
@@ -65,6 +65,8 @@ _EMERGENCY_PATTERNS = [
     r"\b(harass\w*|molest\w*|assault\w*|groped?|stalk\w*|threaten\w*|attack\w*|abuse\w*|touch(ed|ing) me|misbehav\w*)\b",
     r"\b(emergency|help me(?!\s+(?:to\s+)?(?:book|find|with|cancel|change|check|choose|get|know|understand|track|plan|pick|select|reschedule|pay|apply|use|share|see|print|download|resend))|i am not safe|i'?m not safe|i feel unsafe|in danger|scared for my life|sos)\b",
     r"\b(stranded|abandoned)\b.{0,40}\b(night|alone|highway|road)\b",
+    r"\b(someone|somebody|a man|a guy|a person|people|he|they)\b.{0,20}\b(is |are |keeps? )?(following|chasing) me\b",
+    r"\b(i'?m|i am|i feel)\s+(really\s+|very\s+|so\s+)?(scared|afraid|frightened|terrified)\s*(for my (life|safety))?\s*[.!]*\s*$",
 ]
 _EMERGENCY_RE = re.compile("|".join(f"(?:{p})" for p in _EMERGENCY_PATTERNS), re.IGNORECASE)
 # Questions *about* safety features are not emergencies.
@@ -95,6 +97,7 @@ _OTHER_PASSENGER_PATTERNS_EXTRA = [
     r"\b(all|every|other)\b.{0,15}\b(passenger|customer|traveller)s?\b.{0,10}\b(names?|details|phones?|numbers?|seats?|bookings?)\b",
     r"\b(another|other|fellow)\s+(passenger|customer|traveller)'?s?\b.{0,20}\b(name|phone|number|seat|details|booking|pnr)",
     r"\b(passenger|person|traveller|lady|man|woman|guy)\s+(next to|beside|near|behind|in front of|sitting (next to|near|beside))\b",
+    r"\b(name|phone|number|contact|details|pnr)\b.{0,30}\b(passenger|person|traveller|customer|whoever)\b.{0,20}\b(in|on|at)\s+(seat|berth)\b",
 ]
 _OTHER_PASSENGER_RE = re.compile("|".join(f"(?:{p})" for p in _OTHER_PASSENGER_PATTERNS))
 _OTHER_PASSENGER_RE_I = re.compile("|".join(f"(?:{p})" for p in _OTHER_PASSENGER_PATTERNS[:5]), re.IGNORECASE)
