@@ -86,6 +86,7 @@
   const passBtn = el("button", "btn btn-primary", "Start chat");
   passBtn.type = "submit";
   const gateErr = el("p", "sahil-err");
+  gateErr.id = "sahilGateErr";
   const gateRow = el("div", "sahil-row");
   gateRow.append(pass, passBtn);
   gate.append(gateRow, gateErr);
@@ -361,6 +362,7 @@
   gate.addEventListener("submit", async (e) => {
     e.preventDefault();
     gateErr.textContent = "";
+    gate.classList.remove("has-err");
     passBtn.disabled = true;
     try {
       await start(pass.value);
@@ -370,6 +372,8 @@
       if (q) ask(q); else if (f) showForm(f.type, f.opts);
     } catch (err) {
       gateErr.textContent = err.status === 401 ? "That passcode isn't right." : err.message;
+      gate.classList.add("has-err");
+      pass.setAttribute("aria-describedby", "sahilGateErr");
     } finally { passBtn.disabled = false; }
   });
 
