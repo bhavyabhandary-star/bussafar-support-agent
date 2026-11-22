@@ -207,22 +207,22 @@ Notes for the hosted app:
 
 ## Deploy on Render
 
-The repo includes `render.yaml`, a Render Blueprint for a free Python web service.
+The repo includes `render.yaml`, a Render Blueprint for one free Python web service: the customer website with the Sahil chat built in. The Streamlit staff app still runs on your laptop with `streamlit run app.py`.
 
 1. Push this folder to a GitHub repository (see the git commands in the Streamlit section above). Render deploys from GitHub.
 2. In [Render](https://dashboard.render.com), go to **New > Blueprint**, connect your GitHub account, and pick the repo. Render reads `render.yaml`.
 3. When asked, fill in the two secrets: `GOOGLE_API_KEY` (your Gemini key) and `APP_PASSCODE` (the chat passcode). They are stored only in Render and are never in git.
-4. Click **Apply** or **Deploy**. The build runs `pip install -r requirements-full.txt`, and the app starts with `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`.
-5. Open the `https://bussafar-support.onrender.com` link Render shows, or whatever name it gives you. Check that a wrong passcode stays locked, then go through the manual check script above.
+4. Click **Apply** or **Deploy**. The build runs `pip install -r requirements.txt chromadb`, and the site starts with `uvicorn web.server:app --host 0.0.0.0 --port $PORT`.
+5. Open the `https://bussafar-support.onrender.com` link Render shows, or whatever name it gives you. Open `/api/health` to check the key and passcode are set, then open the chat and check that a wrong passcode stays locked.
 
 If you'd rather use the dashboard than a Blueprint, use **New > Web Service** with these settings:
 
 | Setting | Value |
 | --- | --- |
 | Runtime | Python 3 |
-| Build command | `pip install -r requirements-full.txt` |
-| Start command | `streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true` |
-| Health check path | `/_stcore/health` |
+| Build command | `pip install -r requirements.txt chromadb` |
+| Start command | `uvicorn web.server:app --host 0.0.0.0 --port $PORT` |
+| Health check path | `/api/health` |
 | Environment | `PYTHON_VERSION=3.12.7`, `GOOGLE_API_KEY` (secret), `APP_PASSCODE` (secret), optional `GEMINI_CHAT_MODEL` |
 
 Notes for Render's free tier:

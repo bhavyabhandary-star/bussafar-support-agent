@@ -1,37 +1,20 @@
-# Render Blueprint for BusSafar Support (Sahil).
+# Render Blueprint for BusSafar (Sahil): one service, the customer website with the Sahil chat built in.
 # Render > New > Blueprint > pick this repo. You will be asked for the two secrets.
+# (The Streamlit staff app still runs locally with: streamlit run app.py)
 services:
   - type: web
     name: bussafar-support
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements-full.txt
-    startCommand: streamlit run app.py --server.port $PORT --server.address 0.0.0.0 --server.headless true
-    healthCheckPath: /_stcore/health
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.12.7
-      - key: GOOGLE_API_KEY
-        sync: false   # secret: entered in the Render dashboard, never committed
-      - key: APP_PASSCODE
-        sync: false   # secret: entered in the Render dashboard, never committed
-      - key: GEMINI_CHAT_MODEL
-        value: gemini-3.5-flash-lite
-
-  # Optional second service: the customer website with Sahil as a floating chat.
-  - type: web
-    name: bussafar-website
-    runtime: python
-    plan: free
-    buildCommand: pip install -r requirements-full.txt
+    buildCommand: pip install -r requirements.txt chromadb
     startCommand: uvicorn web.server:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/health
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: GOOGLE_API_KEY
-        sync: false
+        sync: false   # secret: entered in the Render dashboard, never committed
       - key: APP_PASSCODE
-        sync: false
+        sync: false   # secret: entered in the Render dashboard, never committed
       - key: GEMINI_CHAT_MODEL
         value: gemini-3.5-flash-lite
