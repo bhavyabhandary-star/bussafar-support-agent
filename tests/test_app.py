@@ -1,6 +1,8 @@
 """Streamlit UI smoke tests using Streamlit's AppTest (no browser, no API key)."""
 from __future__ import annotations
 
+import re
+
 import pytest
 from streamlit.testing.v1 import AppTest
 
@@ -70,4 +72,5 @@ def test_sidebar_ticket_creation_shows_id():
     at = unlocked()
     at.sidebar.text_area[0].input("I left my laptop bag on the bus.")
     next(b for b in at.sidebar.button if b.label == "Create ticket").click().run()
-    assert any("TKT-1001" in s.value for s in at.sidebar.success)
+    # The ticket store is cached per process, so check the ID format, not the number.
+    assert any(re.search(r"Ticket TKT-\d+ created", s.value) for s in at.sidebar.success)
