@@ -1,10 +1,6 @@
-streamlit>=1.40
+# Runtime packages for the website + Sahil (kept small for Vercel's size limit).
+# On your laptop and on Render, install requirements-full.txt instead.
 google-genai>=1.20
-chromadb>=1.0
 pandas>=2.2
 python-dotenv>=1.0
-pytest>=8.0
-openpyxl>=3.1
 fastapi>=0.115
-uvicorn>=0.30
-httpx>=0.27

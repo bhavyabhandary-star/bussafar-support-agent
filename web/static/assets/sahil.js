@@ -10,6 +10,7 @@
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
   let session = store.get();
+  let turns = [];          // recent turns, sent so a fresh server instance can pick up the chat
   let busy = false;
   let pending = "";       // question waiting for the passcode
   let needsPasscode = true;
@@ -159,7 +160,8 @@
     bubble("me", text);
     const t = typing();
     try {
-      const d = await post("/api/chat", { session, message: text });
+      const d = await post("/api/chat", { session, message: text, history: turns.slice(-12) });
+      turns.push({ role: "user", text }, { role: "model", text: d.text });
       t.remove();
       bubble("bot", d.text, d);
       if (d.emergency) sos.hidden = false;
@@ -214,7 +216,7 @@
   close.addEventListener("click", () => setOpen(false));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) setOpen(false); });
   newBtn.addEventListener("click", () => {
-    session = null; store.set(null); log.textContent = ""; sos.hidden = true;
+    session = null; store.set(null); log.textContent = ""; sos.hidden = true; turns = [];
     needsPasscode ? showGate(true) : start("").catch((e) => bubble("bot", e.message));
   });
 

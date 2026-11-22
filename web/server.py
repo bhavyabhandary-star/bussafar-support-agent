@@ -10,6 +10,7 @@ The page itself is static (web/static). This server adds four small endpoints:
 """
 from __future__ import annotations
 
+import hashlib
 import hmac
 import logging
 import secrets
@@ -50,8 +51,27 @@ TOPICS = [
 ]
 
 
+def _signing_key() -> bytes:
+    secret = (config.app_passcode() or "") + "|" + (config.google_api_key() or "") + "|bussafar-session"
+    return hashlib.sha256(secret.encode()).digest()
+
+
+def sign(token: str) -> str:
+    return token + "." + hmac.new(_signing_key(), token.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def verify(sid: str) -> bool:
+    token, _, mac = (sid or "").rpartition(".")
+    return bool(token) and hmac.compare_digest(sign(token), sid)
+
+
 class SessionStore:
-    """In-memory chat sessions: one Sahil (with its own memory and ticket rules) per visitor chat."""
+    """Chat sessions: one Sahil (with its own memory and ticket rules) per visitor chat.
+
+    Session IDs are signed. On serverless hosts a request can land on a fresh instance that has
+    never seen the chat; a validly signed ID then gets a new Sahil, primed with the recent turns
+    the browser sends, instead of an error.
+    """
 
     def __init__(self, factory) -> None:
         self.factory = factory
@@ -59,18 +79,23 @@ class SessionStore:
         self._lock = threading.Lock()
 
     def create(self) -> str:
-        sid = secrets.token_urlsafe(24)
+        sid = sign(secrets.token_urlsafe(24))
         with self._lock:
             self._prune()
             self._items[sid] = (self.factory(), time.time(), 0)
         return sid
 
-    def take_turn(self, sid: str) -> Sahil | None:
+    def take_turn(self, sid: str, history: list[dict] | None = None) -> Sahil | None:
+        if not verify(sid):
+            return None
         with self._lock:
             self._prune()
             item = self._items.get(sid)
             if item is None:
-                return None
+                agent = self.factory()
+                agent.history = _clean_history(history)
+                item = (agent, time.time(), len(agent.history) // 2)
+                self._items[sid] = item
             agent, _, turns = item
             if turns >= MAX_TURNS:
                 raise HTTPException(429, "This chat has reached its message limit. Please start a new chat.")
@@ -104,6 +129,17 @@ class RateLimiter:
                 q.append(now)
 
 
+def _clean_history(history: list[dict] | None) -> list[dict]:
+    """Recent turns sent back by the browser, trimmed and limited to plain text."""
+    out = []
+    for m in (history or [])[-12:]:
+        role = "model" if m.get("role") in ("model", "bot", "assistant") else "user"
+        text = str(m.get("text", ""))[: config.MAX_INPUT_CHARS]
+        if text:
+            out.append({"role": role, "text": text})
+    return out
+
+
 def _topic(question: str) -> str:
     q = question.lower()
     # Most specific topics first, so "Can I book for someone else?" lands in ID & boarding.
@@ -130,11 +166,11 @@ def default_agent_factory():
     if config.google_api_key():
         from agent.sahil import GeminiLLM
         from rag.embeddings import GeminiEmbedder
+        from rag.file_store import ensure_any_index
         from rag.retrieval import Retriever
-        from rag.vector_store import ensure_index
 
         embedder = GeminiEmbedder()
-        shared = {"retriever": Retriever(ensure_index(embedder), embedder)}
+        shared = {"retriever": Retriever(ensure_any_index(embedder), embedder)}
         return lambda: Sahil(shared["retriever"], GeminiLLM(), tickets, config.BOOKINGS_CSV)
     return lambda: Sahil(retriever, llm, tickets, config.BOOKINGS_CSV)
 
@@ -146,6 +182,7 @@ class UnlockIn(BaseModel):
 class ChatIn(BaseModel):
     session: str
     message: str
+    history: list[dict] = []
 
 
 def create_app(agent_factory=None) -> FastAPI:
@@ -196,7 +233,7 @@ def create_app(agent_factory=None) -> FastAPI:
     @app.post("/api/chat")
     def chat(body: ChatIn, request: Request):
         limiter.check("chat", visitor(request), CHAT_LIMIT)
-        agent = sessions().take_turn(body.session)
+        agent = sessions().take_turn(body.session, body.history)
         if agent is None:
             raise HTTPException(401, "Your chat expired. Please start a new chat.")
         started = time.time()

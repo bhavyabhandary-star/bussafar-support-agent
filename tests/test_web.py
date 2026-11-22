@@ -91,3 +91,33 @@ def test_sessions_are_separate(client):
     client.post("/api/chat", json={"session": a, "message": "I want to speak to a person."})
     r = client.post("/api/chat", json={"session": b, "message": "I want to speak to a person."}).json()
     assert r["ticket_ids"] == ["TKT-1002"]  # chat B is not blocked by chat A's ticket
+
+
+def test_file_store_matches_chroma_shape(fake_embedder, tmp_path):
+    from rag.file_store import ensure_file_index
+    from rag.retrieval import Retriever
+    col = ensure_file_index(fake_embedder, cache=tmp_path / "v.json")
+    assert col.count() == 25
+    r = Retriever(col, fake_embedder)
+    assert r.search_all("Can I change my travel date?")[0].source == "FAQ: Can I change my travel date?"
+    again = ensure_file_index(fake_embedder, cache=tmp_path / "v.json")  # served from the cache file
+    assert again.ids == col.ids
+
+
+def test_vercel_entry_point_serves_the_site():
+    from api.index import app
+    c = TestClient(app)
+    assert c.get("/api/health").json()["ok"] and "Ask Sahil" in c.get("/").text
+
+
+def test_signed_session_survives_a_fresh_instance(tickets, monkeypatch):
+    monkeypatch.setattr(config, "app_passcode", lambda: "demo-pass")
+    factory = lambda: Sahil(None, None, tickets, config.BOOKINGS_CSV)  # noqa: E731
+    sid = TestClient(server.create_app(factory)).post("/api/session", json={"passcode": "demo-pass"}).json()["session"]
+    fresh = TestClient(server.create_app(factory))  # another serverless instance
+    hist = [{"role": "user", "text": "I want to check my booking status"},
+            {"role": "model", "text": "Please share your PNR."}]
+    r = fresh.post("/api/chat", json={"session": sid, "message": "thanks", "history": hist})
+    assert r.status_code == 200
+    forged = sid[:-4] + "abcd"
+    assert fresh.post("/api/chat", json={"session": forged, "message": "hi"}).status_code == 401

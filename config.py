@@ -37,7 +37,8 @@ KNOWLEDGE_BASE_DIR = DATA_DIR / "knowledge_base"
 HELP_DOCS_FILE = KNOWLEDGE_BASE_DIR / "bussafar_help.txt"
 BOOKINGS_CSV = DATA_DIR / "bookings.csv"
 INDEX_DIR = BASE_DIR / "index"
-TICKETS_CSV = BASE_DIR / "tickets.csv"
+# Serverless hosts (Vercel) only allow writing to /tmp; TICKETS_PATH overrides the location.
+TICKETS_CSV = Path(os.getenv("TICKETS_PATH") or ("/tmp/tickets.csv" if os.getenv("VERCEL") else BASE_DIR / "tickets.csv"))
 
 # --- Models --------------------------------------------------------------
 # Names can be overridden without code changes if your key lists other models.
