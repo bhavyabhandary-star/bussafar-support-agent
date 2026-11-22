@@ -244,6 +244,52 @@ def detect_handoff(text: str) -> str | None:
     return None
 
 
+# --- Conversation handling: small talk, gibberish, abuse ------------------
+_SMALL_TALK_RE = re.compile(
+    r"^\s*(?:hi+|hello+|hey+|hiya|namaste|good\s+(?:morning|afternoon|evening)|yo)?[\s,!.]*"
+    r"(?:sahil)?[\s,!.]*(?:how\s+are\s+you(?:\s+doing)?|how'?s\s+it\s+going|what'?s\s+up|thanks?|thank\s+you|ok(?:ay)?|cool|great|nice)?"
+    r"[\s,!.?]*$", re.IGNORECASE)
+_ABUSE_RE = re.compile(
+    r"\b(wtf|fuck\w*|f\*+k|shit|screw\s+you|idiot\w*|stupid|useless|shut\s+up|bloody|bastard|dumb|"
+    r"pathetic|nonsense|rubbish|hate\s+you|what'?s\s+wrong\s+with\s+you)\b", re.IGNORECASE)
+_KNOWN_SHORT = {"i", "a", "ok", "pnr", "id", "sos", "ac", "upi", "sms", "bus", "tkt", "hi", "hey", "hello"}
+
+
+def detect_small_talk(text: str) -> bool:
+    """Greetings and pleasantries with nothing else in them ("Hi Sahil, how are you?", "thanks")."""
+    t = (text or "").strip()
+    return bool(t) and bool(_SMALL_TALK_RE.match(t)) and bool(re.search(r"[a-z]", t, re.IGNORECASE))
+
+
+def detect_abuse(text: str) -> bool:
+    return bool(_ABUSE_RE.search(text or ""))
+
+
+def detect_gibberish(text: str) -> bool:
+    """Keyboard mashing like 'gldhgj hljg fj': most words have no vowels or long consonant runs."""
+    words = re.findall(r"[a-z]+", (text or "").lower())
+    if not words or re.search(r"\d", text or ""):
+        return False
+    def odd(w: str) -> bool:
+        return (w not in _KNOWN_SHORT and len(w) >= 3
+                and bool(not re.search(r"[aeiouy]", w) or re.search(r"[^aeiouy]{5,}", w)))
+    return sum(odd(w) for w in words) / len(words) >= 0.6
+
+
+SMALL_TALK_REPLIES = [
+    "I'm doing well, thanks for asking! What can I help you with on your BusSafar trip: a booking, refund, delay or luggage?",
+    "Happy to help! Is there something about your trip I can check, like a booking, a cancellation or a date change?",
+    "You're welcome! If anything else comes up about your bus trip, just ask.",
+]
+GIBBERISH_REPLY = ("Sorry, I didn't quite catch that. Could you tell me what you need help with, for example "
+                   "a booking, a refund, a delay or luggage?")
+ABUSE_REPLIES = [
+    "I'm sorry things have been frustrating. Tell me what went wrong with your trip and I'll do my best to help.",
+    "I understand you're upset, and I want to help. Could you tell me what happened with your booking or bus?",
+    "I hear you. Let's sort this out together: what's the problem with your trip?",
+]
+
+
 # --- Canned safe replies -------------------------------------------------
 INJECTION_REPLY = (
     "I'm sorry, I can't do that. I can only help with BusSafar bookings, tickets, "
