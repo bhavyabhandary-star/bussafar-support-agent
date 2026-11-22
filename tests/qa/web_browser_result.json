@@ -13,20 +13,20 @@
   "id": "WEB-019",
   "scenario": "Contact form in the browser",
   "data": "Lost item + description",
-  "expected": "Must pick an issue type; ticket ID shown after Create ticket",
+  "expected": "Must pick an issue type and a real PNR; ticket ID shown after Create ticket",
   "severity": "High",
   "steps": "Tap Talk to a person, submit empty, then fill and submit",
   "status": "Pass",
-  "actual": "Empty form says 'Please choose an issue type.'; after filling, a ticket ID is shown"
+  "actual": "Empty form says 'Please choose an issue type.'; unknown PNR says 'We couldn't find a booking with PNR BS000000. Please check it and try again.'; with a real PNR a ticket ID is shown"
  },
  {
   "id": "WEB-020",
   "scenario": "Forms on a phone (375x812)",
   "data": "375x812 viewport",
-  "expected": "Form fits the screen; Cancel closes it",
+  "expected": "Form fits the screen; unknown ticket ID refused; Cancel closes it",
   "severity": "Medium",
   "steps": "Open the Ticket ID form at phone size, then Cancel",
   "status": "Pass",
-  "actual": "Ticket form fits 375px (x=14, w=295); no sideways scroll: true; Cancel removes it: true"
+  "actual": "Ticket form fits 375px (x=14, w=295); no sideways scroll: true; unknown ID says 'There's no ticket TKT-9999. Please check the ID on your ticket message.'; Cancel removes it: true"
  }
 ]

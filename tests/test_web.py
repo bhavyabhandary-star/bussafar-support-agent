@@ -144,8 +144,45 @@ def test_contact_form_creates_one_ticket_per_chat(client):
                                          "description": "Left my bag on the bus", "pnr": "BS558954"}).json()
     assert len(d["ticket_ids"]) == 1 and d["ticket_ids"][0] in d["text"] and not d["emergency"]
     again = client.post("/api/ticket", json={"session": s, "category": "complaint",
-                                             "description": "Still waiting for help"}).json()
+                                             "description": "Still waiting for help", "pnr": "BS558954"}).json()
     assert again["ticket_ids"] == [] and again["existing"] == d["ticket_ids"][0]
     sos = client.post("/api/ticket", json={"session": s, "category": "safety",
                                            "description": "The driver is driving dangerously"}).json()
     assert sos["emergency"] and "112" in sos["text"] and len(sos["ticket_ids"]) == 1
+
+
+def test_contact_form_needs_a_real_pnr(client):
+    s = unlock(client)
+    post = lambda **kw: client.post("/api/ticket", json={"session": s, "category": "lost_item",
+                                                         "description": "Left my bag on the bus", **kw})
+    r = post()
+    assert r.status_code == 400 and "PNR" in r.json()["error"]
+    assert post(pnr="12345").status_code == 400
+    r = post(pnr="BS000000")
+    assert r.status_code == 400 and "couldn't find a booking" in r.json()["error"]
+    assert client.post("/api/ticket", json={"session": s, "category": "made_up", "pnr": "BS558954",
+                                            "description": "Left my bag"}).status_code == 400
+    assert post(pnr="bs 558954").json()["ticket_ids"]           # tidied and accepted
+    # a safety report is never held up by a missing PNR
+    sos = client.post("/api/ticket", json={"session": s, "category": "safety", "description": "Driver is drunk"})
+    assert sos.status_code == 200 and sos.json()["emergency"]
+
+
+def test_contact_form_reuses_an_open_ticket_for_the_same_pnr(client):
+    first = client.post("/api/ticket", json={"session": unlock(client), "category": "lost_item",
+                                             "description": "Left my bag on the bus", "pnr": "BS558954"}).json()
+    other_chat = client.post("/api/ticket", json={"session": unlock(client), "category": "complaint",
+                                                  "description": "Nobody called me back", "pnr": "BS558954"}).json()
+    assert other_chat["ticket_ids"] == [] and other_chat["existing"] == first["ticket_ids"][0]
+
+
+def test_ticket_check_only_accepts_real_ticket_ids(client):
+    s = unlock(client)
+    tid = client.post("/api/ticket", json={"session": s, "category": "lost_item", "pnr": "BS558954",
+                                           "description": "Left my bag on the bus"}).json()["ticket_ids"][0]
+    assert client.post("/api/ticket/check", json={"session": s, "ticket_id": tid.lower()}).json() == {"ticket_id": tid}
+    assert client.post("/api/ticket/check", json={"session": s, "ticket_id": "1001"}).json() == {"ticket_id": "TKT-1001"}
+    r = client.post("/api/ticket/check", json={"session": s, "ticket_id": "TKT-9999"})
+    assert r.status_code == 404 and "no ticket TKT-9999" in r.json()["error"]
+    assert client.post("/api/ticket/check", json={"session": s, "ticket_id": "hello"}).status_code == 400
+    assert client.post("/api/ticket/check", json={"session": "bad", "ticket_id": tid}).status_code == 401
