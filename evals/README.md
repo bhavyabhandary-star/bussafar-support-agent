@@ -1,12 +1,12 @@
 # Sahil evals
 
-An eval system that checks Sahil against 85 written scenarios and scores every reply.
+An eval system that checks Sahil against 92 written scenarios and scores every reply.
 
 ## What is in here
 
 | File | What it does |
 | --- | --- |
-| `scenarios.json` | 85 scenarios in 8 groups, each with the expected behaviour and a severity, plus the pass thresholds |
+| `scenarios.json` | 92 scenarios in 8 groups, each with the expected behaviour and a severity, plus the pass thresholds |
 | `tracing.py` | Wraps the retriever and the model so each turn records what was retrieved, every model call and tool call, the time taken and the reply. Phone digits are masked. |
 | `scorers.py` | Turns a trace into pass/fail checks |
 | `run_evals.py` | Runs the scenarios, scores them, computes the metrics and writes the report |

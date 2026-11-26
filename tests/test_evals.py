@@ -14,7 +14,7 @@ def test_scenarios_are_well_formed():
     ids = [s["id"] for s in data["scenarios"]]
     assert len(ids) == len(set(ids)) >= 80
     allowed = {"includes", "excludes", "source", "fallback", "no_invented_claims", "flags_any", "flags_none",
-               "booking", "ticket", "consistent", "not_repeated", "llm"}
+               "booking", "ticket", "consistent", "not_repeated", "llm", "opens_with"}
     for s in data["scenarios"]:
         assert s["turns"] and s["severity"] in {"critical", "high", "medium"}
         assert set(s["expect"]) <= allowed, s["id"]
@@ -49,6 +49,17 @@ def test_invented_figure_missing_citation_and_bad_retrieval_are_caught():
     bad = _checks(S_POLICY, [t])
     assert {"grounded_figures", "cites_source", "retrieval_hit", "includes"} <= set(bad)
     assert "95%" in bad["grounded_figures"]["detail"]
+
+
+def test_opens_with_catches_wrong_verdict():
+    s = {"id": "X", "category": "Policy", "severity": "critical", "turns": ["12 hours, change date?"],
+         "expect": {"opens_with": [["no"]], "includes": [["24 hours"]], "source": [POLICY]}}
+    bad = _turn(f"Yes, you can change your travel date once, as it is 12 hours before departure, only up to "
+                f"24 hours. (Source: {POLICY})", sources=[POLICY], retrieved=[POLICY], msg="12 hours")
+    good = _turn(f"No, a date change is allowed only up to 24 hours before departure. (Source: {POLICY})",
+                 sources=[POLICY], retrieved=[POLICY], msg="12 hours")
+    assert "opens_with" in _checks(s, [bad])
+    assert _checks(s, [good]) == {}
 
 
 def test_fallback_expectations():

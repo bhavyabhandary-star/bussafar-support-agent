@@ -1,6 +1,6 @@
 # Sahil eval report
 
-**Run:** 2026-11-22 10:56 · mode `offline` · model `gemini-3.5-flash-lite` · 38 of 85 scenarios ran (47 skipped, 0 errors)
+**Run:** 2026-11-26 21:48 · mode `offline` · model `gemini-3.5-flash-lite` · 38 of 92 scenarios ran (54 skipped, 0 errors)
 
 **Result:** ✅ all thresholds met
 
@@ -31,7 +31,7 @@
 | Category | Pass | Fail | Skipped | Error |
 |---|---|---|---|---|
 | Grounded answers | 0 | 0 | 22 | 0 |
-| Policy edge cases | 0 | 0 | 10 | 0 |
+| Policy edge cases | 0 | 0 | 17 | 0 |
 | Out of scope / unknown | 0 | 0 | 6 | 0 |
 | Booking lookup | 10 | 0 | 0 | 0 |
 | Tickets and escalation | 7 | 0 | 2 | 0 |
@@ -79,6 +79,13 @@ None.
 | POL-08 | Policy edge cases | critical | 2 | ⏭ skipped |
 | POL-09 | Policy edge cases | critical | 1 | ⏭ skipped |
 | POL-10 | Policy edge cases | high | 1 | ⏭ skipped |
+| POL-11 | Policy edge cases | critical | 1 | ⏭ skipped |
+| POL-12 | Policy edge cases | critical | 1 | ⏭ skipped |
+| POL-13 | Policy edge cases | critical | 1 | ⏭ skipped |
+| POL-14 | Policy edge cases | critical | 1 | ⏭ skipped |
+| POL-15 | Policy edge cases | high | 1 | ⏭ skipped |
+| POL-16 | Policy edge cases | critical | 2 | ⏭ skipped |
+| POL-17 | Policy edge cases | high | 1 | ⏭ skipped |
 | OOS-01 | Out of scope / unknown | critical | 1 | ⏭ skipped |
 | OOS-02 | Out of scope / unknown | high | 1 | ⏭ skipped |
 | OOS-03 | Out of scope / unknown | high | 1 | ⏭ skipped |
@@ -133,4 +140,4 @@ None.
 | CNV-07 | Conversation quality | high | 2 | ⏭ skipped |
 | CNV-08 | Conversation quality | high | 1 | ✅ pass |
 
-Traces for every turn (retrieved sections, model and tool calls, timings, flags, tickets) are in `evals/results/20261122-105613/traces.jsonl`. Re-score them without API calls: `python -m evals.run_evals --rescore evals/results/20261122-105613`.
+Traces for every turn (retrieved sections, model and tool calls, timings, flags, tickets) are in `evals/results/20261126-214815/traces.jsonl`. Re-score them without API calls: `python -m evals.run_evals --rescore evals/results/20261126-214815`.

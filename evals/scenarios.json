@@ -510,6 +510,11 @@
     "source": [
      "FAQ: Can I change my travel date?",
      "Cancellation and refund policy"
+    ],
+    "opens_with": [
+     [
+      "no"
+     ]
     ]
    }
   },
@@ -626,6 +631,209 @@
     ],
     "source": [
      "FAQ: Do you have discounts?"
+    ]
+   }
+  },
+  {
+   "id": "POL-11",
+   "category": "Policy edge cases",
+   "severity": "critical",
+   "turns": [
+    "My bus leaves in 12 hours. Can I change my travel date?"
+   ],
+   "expect": {
+    "opens_with": [
+     [
+      "no"
+     ]
+    ],
+    "includes": [
+     [
+      "24 hours"
+     ]
+    ],
+    "excludes": [
+     "yes, you can change",
+     "you can still change"
+    ],
+    "source": [
+     "Cancellation and refund policy",
+     "FAQ: Can I change my travel date?"
+    ]
+   }
+  },
+  {
+   "id": "POL-12",
+   "category": "Policy edge cases",
+   "severity": "critical",
+   "turns": [
+    "My bus leaves in 23 hours. Can I change my travel date?"
+   ],
+   "expect": {
+    "opens_with": [
+     [
+      "no"
+     ]
+    ],
+    "includes": [
+     [
+      "24 hours"
+     ]
+    ],
+    "excludes": [
+     "yes, you can change",
+     "you can still change"
+    ],
+    "source": [
+     "Cancellation and refund policy",
+     "FAQ: Can I change my travel date?"
+    ]
+   }
+  },
+  {
+   "id": "POL-13",
+   "category": "Policy edge cases",
+   "severity": "critical",
+   "turns": [
+    "My bus leaves in exactly 24 hours. Can I change my travel date?"
+   ],
+   "expect": {
+    "opens_with": [
+     [
+      "yes"
+     ]
+    ],
+    "includes": [
+     [
+      "₹100",
+      "rs 100"
+     ]
+    ],
+    "excludes": [
+     "no longer",
+     "not allowed",
+     "cannot change",
+     "can't change"
+    ],
+    "source": [
+     "Cancellation and refund policy",
+     "FAQ: Can I change my travel date?"
+    ]
+   }
+  },
+  {
+   "id": "POL-14",
+   "category": "Policy edge cases",
+   "severity": "critical",
+   "turns": [
+    "My bus leaves in 30 hours. Can I change my travel date?"
+   ],
+   "expect": {
+    "opens_with": [
+     [
+      "yes"
+     ]
+    ],
+    "includes": [
+     [
+      "₹100",
+      "rs 100"
+     ]
+    ],
+    "excludes": [
+     "no longer",
+     "not allowed",
+     "cannot change",
+     "can't change"
+    ],
+    "source": [
+     "Cancellation and refund policy",
+     "FAQ: Can I change my travel date?"
+    ]
+   }
+  },
+  {
+   "id": "POL-15",
+   "category": "Policy edge cases",
+   "severity": "high",
+   "turns": [
+    "My bus leaves in less than 24 hours. Can I change the date?"
+   ],
+   "expect": {
+    "opens_with": [
+     [
+      "no"
+     ]
+    ],
+    "includes": [
+     [
+      "24 hours"
+     ]
+    ],
+    "excludes": [
+     "yes, you can change",
+     "you can still change"
+    ],
+    "source": [
+     "Cancellation and refund policy",
+     "FAQ: Can I change my travel date?"
+    ]
+   }
+  },
+  {
+   "id": "POL-16",
+   "category": "Policy edge cases",
+   "severity": "critical",
+   "turns": [
+    "My bus leaves in 12 hours.",
+    "Can I change the date?"
+   ],
+   "expect": {
+    "opens_with": [
+     [
+      "no"
+     ]
+    ],
+    "includes": [
+     [
+      "24 hours"
+     ]
+    ],
+    "excludes": [
+     "yes, you can change",
+     "you can still change"
+    ],
+    "source": [
+     "Cancellation and refund policy",
+     "FAQ: Can I change my travel date?"
+    ]
+   }
+  },
+  {
+   "id": "POL-17",
+   "category": "Policy edge cases",
+   "severity": "high",
+   "turns": [
+    "My bus leaves in 6 hours. Can I reschedule to next week?"
+   ],
+   "expect": {
+    "opens_with": [
+     [
+      "no"
+     ]
+    ],
+    "includes": [
+     [
+      "24 hours"
+     ]
+    ],
+    "excludes": [
+     "yes, you can change",
+     "you can still change"
+    ],
+    "source": [
+     "Cancellation and refund policy",
+     "FAQ: Can I change my travel date?"
     ]
    }
   },
