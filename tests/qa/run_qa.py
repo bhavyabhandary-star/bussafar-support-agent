@@ -212,6 +212,14 @@ def any_text(*subs):
     return _c
 
 
+def opens(*alts):
+    """The verdict comes first: the reply starts with one of these words ("No," / "Yes,")."""
+    def _c(rs, ctx):
+        t = low(rs[-1]).lstrip(" \"'")
+        return (any(t.startswith(a.lower()) for a in alts), "does not open with " + "/".join(alts))
+    return _c
+
+
 def every_turn(check):
     def _c(rs, ctx):
         for i, r in enumerate(rs):
@@ -343,7 +351,7 @@ def build_cases() -> list[Case]:
         ("POL-002", "Cancellation exactly 24 hours before", "If I cancel exactly 24 hours before departure, how much refund will I get?", has_all("50%"), "50% refund", "High"),
         ("POL-003", "Cancellation 18 hours before", "If I cancel 18 hours before departure, how much refund will I get?", has_all("50%"), "50% refund", "High"),
         ("POL-004", "Cancellation exactly 12 hours before", "If I cancel exactly 12 hours before departure, how much refund will I get?", has_all("50%"), "50% refund", "High"),
-        ("POL-005", "Cancellation 6 hours before", "If I cancel 6 hours before departure, how much refund will I get?", has_all("no refund"), "No refund", "High"),
+        ("POL-005", "Cancellation 6 hours before", "If I cancel 6 hours before departure, how much refund will I get?", has_all(("no refund", "not receive a refund", "not get a refund", "not be refunded")), "No refund", "High"),
         ("POL-006", "Cancellation 1 hour before", "If I cancel 1 hour before departure, how much refund will I get?", has_all("no refund"), "No refund", "High"),
         ("POL-007", "Refund timeline", "When will my refund arrive?", has_all(("5 to 7", "5-7", "5–7")), "5 to 7 working days", "High"),
         ("POL-008", "Refund destination", "Where will my refund be credited?", has_all("original payment"), "Original payment method", "High"),
@@ -364,9 +372,14 @@ def build_cases() -> list[Case]:
 
     # D. Date changes and travel rules
     dc = [
-        ("POL-013", "Date change 48 hours before", "My bus leaves in 48 hours. Can I change my travel date?", has_all("once", ("₹100", "100")), "Allowed once (₹100 + fare difference)"),
-        ("POL-014", "Date change exactly 24 hours before", "My bus leaves in exactly 24 hours. Can I change my travel date?", has_all("24 hours"), "Allowed up to 24 hours before (subject to availability per test plan)"),
-        ("POL-015", "Date change 12 hours before", "My bus leaves in 12 hours. Can I change my travel date?", all_of(has_all("24 hours"), any_text("not", "can't", "cannot", "only", "unfortunately")), "Not allowed"),
+        # The verdict must open the reply: a keyword check alone passed "Yes, ... only up to 24 hours".
+        ("POL-013", "Date change 48 hours before", "My bus leaves in 48 hours. Can I change my travel date?", all_of(opens("yes"), has_all("once", ("₹100", "100"))), "Allowed once (₹100 + fare difference)"),
+        ("POL-014", "Date change exactly 24 hours before", "My bus leaves in exactly 24 hours. Can I change my travel date?", all_of(opens("yes"), has_all(("₹100", "100"))), "Allowed (up to 24 hours before departure), ₹100 + fare difference"),
+        ("POL-015", "Date change 12 hours before", "My bus leaves in 12 hours. Can I change my travel date?", all_of(opens("no"), has_all("24 hours"), none_of(r"you can (still )?change")), "Not allowed (only up to 24 hours before); offer cancellation or a person"),
+        ("POL-024", "Date change 23 hours before", "My bus leaves in 23 hours. Can I change my travel date?", all_of(opens("no"), has_all("24 hours"), none_of(r"you can (still )?change")), "Not allowed (just under the 24-hour cutoff)"),
+        ("POL-025", "Date change 30 hours before", "My bus leaves in 30 hours. Can I change my travel date?", all_of(opens("yes"), has_all(("₹100", "100")), none_of(r"no longer|cannot change|can't change")), "Allowed once (₹100 + fare difference)"),
+        ("POL-026", "Date change less than 24 hours before", "My bus leaves in less than 24 hours. Can I change the date?", all_of(opens("no"), has_all("24 hours")), "Not allowed"),
+        ("POL-027", "Date change 6 hours before (reschedule)", "My bus leaves in 6 hours. Can I reschedule to next week?", all_of(opens("no"), has_all("24 hours")), "Not allowed; cancellation band is no refund"),
         ("POL-016", "Second date change", "I already changed my travel date once. Can I change it again?", has_all("once"), "Not allowed (one change only)"),
         ("POL-017", "Date change fee", "What is the fee to change my travel date?", has_all(("₹100", "100"), "fare difference"), "₹100 plus fare difference"),
         ("POL-018", "Passenger name change", "I misspelled the passenger name. Can I correct it?", has_all("cancel", "new"), "Not allowed; cancel and rebook"),
@@ -378,6 +391,9 @@ def build_cases() -> list[Case]:
     ]
     for tid, scen, q, chk, exp in dc:
         add(Case(tid, "Date changes & travel rules", scen, [q], exp, "High", cited(chk)))
+    add(Case("POL-028", "Date changes & travel rules", "Date change 12 hours before, asked over two turns",
+             ["My bus leaves in 12 hours.", "Can I change the date?"], "Not allowed (hours from the earlier turn count)",
+             "High", cited(all_of(opens("no"), has_all("24 hours")))))
 
     # E. Delays
     add(Case("DEL-001", "Delays", "Bus delayed 1 hour", ["My bus is delayed by 1 hour. What should I do?"],
@@ -1283,6 +1299,14 @@ CLARIFICATIONS = [
      "Not in the help docs. Sahil states the documented rule (once, up to 24 hours before departure, ₹100 plus "
      "fare difference) and does not invent an availability rule. If pressed, it gives the fallback and offers a "
      "person."),
+    ("Date change under 24 hours before departure (POL-015, POL-024 to POL-028)",
+     "One date change is allowed only up to 24 hours before departure. Comparing the customer's hours with 24 is "
+     "done in code (agent/policy_check.py): the verdict goes to the model with the question, and a reply that "
+     "contradicts it ('Yes' at 12 or 23 hours, 'No' at 24 or 30 hours) is replaced with one built from the "
+     "Cancellation and refund policy, which also gives the refund band if they cancel instead. Exactly 24 hours "
+     "is allowed. The earlier POL-015 check only looked for keywords such as 'only' and '24 hours', so a reply "
+     "like 'Yes, ... only up to 24 hours' would also have passed; date-change checks now require the reply to "
+     "open with the right verdict."),
     ("ESC-010 / CONV-006 duplicate escalation",
      "One ticket per chat, enforced in code. Any later hand-off (lost item, bus no-show, person requested, refund "
      "above ₹2,000) returns the open ticket's ID and says no new ticket was created. Two exceptions: a safety "
@@ -1328,10 +1352,10 @@ def main():
         from agent.sahil import GeminiLLM
         from rag.embeddings import GeminiEmbedder
         from rag.retrieval import Retriever
-        from rag.vector_store import ensure_index
+        from rag.file_store import ensure_any_index  # Chroma, or the pure-Python store if Chroma cannot load
 
         emb = GeminiEmbedder()
-        retriever = Retriever(ensure_index(emb), emb)
+        retriever = Retriever(ensure_any_index(emb), emb)
         llm = ThrottledLLM(GeminiLLM(), Throttle(args.gap))
         mode = "live"
 

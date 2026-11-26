@@ -238,10 +238,10 @@ def main(argv=None) -> int:
             from agent.sahil import GeminiLLM
             from rag.embeddings import GeminiEmbedder
             from rag.retrieval import Retriever
-            from rag.vector_store import ensure_index
+            from rag.file_store import ensure_any_index  # Chroma, or the pure-Python store if Chroma cannot load
 
             emb = GeminiEmbedder()
-            retriever = Retriever(ensure_index(emb), emb)
+            retriever = Retriever(ensure_any_index(emb), emb)
 
             class _L:  # model + pacing, wrapped per scenario by TracingLLM
                 inner, throttle = GeminiLLM(), Pacer(args.gap)

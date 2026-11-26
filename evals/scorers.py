@@ -120,6 +120,11 @@ def expectations(scenario: dict, turns: list[dict]) -> list[dict]:
     out = []
     for item in e.get("includes", []):
         out.append(_ok("includes", _has(text, item), f"needs '{_label(item)}'"))
+    for item in e.get("opens_with", []):
+        # The verdict comes first ("No, ..." / "Yes, ..."), so a "Yes" that later says "only up to 24 hours" fails.
+        alts = item if isinstance(item, list) else [item]
+        head = text.lstrip(" \"'").lower()
+        out.append(_ok("opens_with", any(head.startswith(a.lower()) for a in alts), f"must open with '{_label(item)}'"))
     for item in e.get("excludes", []):
         out.append(_ok("excludes", not _has(text, item), f"must not say '{_label(item)}'"))
     if "fallback" in e:

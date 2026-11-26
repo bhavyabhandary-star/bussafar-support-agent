@@ -20,9 +20,11 @@ from typing import Any, Protocol
 
 import config
 from agent import guardrails
+from agent.policy_check import POLICY_SOURCE, check_date_change, contradicts
 from agent.prompts import SYSTEM_PROMPT, build_user_turn
 from booking.booking_lookup import normalize_pnr, format_booking
 from booking.booking_lookup import get_booking_status as lookup_booking
+from rag.document_loader import load_help_docs
 from rag.retrieval import RetrievedChunk, format_context
 from support.ticket_manager import CATEGORIES, STATUS_MEANINGS, TicketError, TicketManager
 
@@ -245,6 +247,20 @@ def infer_citation(reply: str, chunks: list[RetrievedChunk]) -> str | None:
         if facts and any(f in reply_n for f in facts):
             return c.source
     return None
+
+
+_POLICY_CHUNKS: dict[str, RetrievedChunk] = {}
+
+
+def policy_chunk(source: str) -> RetrievedChunk | None:
+    """A help-doc section by its source name, read from the help docs file (no embedding call)."""
+    if not _POLICY_CHUNKS:
+        try:
+            for c in load_help_docs(config.HELP_DOCS_FILE):
+                _POLICY_CHUNKS[c.source] = RetrievedChunk(c.chunk_id, c.kind, c.title, c.source, c.text, 0.0)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not load help docs for the policy check: %s", exc)
+    return _POLICY_CHUNKS.get(source)
 
 
 def guardrails_reason(category: str, amount: float | None) -> str:
@@ -578,8 +594,15 @@ class Sahil:
             )
 
         chunks = self._retrieve(msg)
+        # Date change with the hours stated: code decides "up to 24 hours before departure", not the model.
+        date_check = check_date_change(msg, [m["text"] for m in self.history if m["role"] == "user"])
+        if date_check and all(c.source != POLICY_SOURCE for c in chunks):
+            extra = policy_chunk(POLICY_SOURCE)
+            if extra:
+                chunks = chunks + [extra]
         allowed_sources = {c.source for c in chunks}
-        turn_messages = list(self.history) + [{"role": "user", "text": build_user_turn(msg, format_context(chunks))}]
+        user_turn = build_user_turn(msg, format_context(chunks), date_check.note() if date_check else None)
+        turn_messages = list(self.history) + [{"role": "user", "text": user_turn}]
         new_tickets: list[str] = []
         booking: dict | None = None
         reply_text = ""
@@ -623,6 +646,10 @@ class Sahil:
                             f"can help. {config.TICKET_REPLY_PROMISE}")
                     self._remember(msg, text)
                     return SahilResponse(text, ticket_ids=[tid], flags=["llm_error", "auto_ticket"])
+            if date_check and not new_tickets:
+                text = date_check.reply()
+                self._remember(msg, text)
+                return SahilResponse(text, sources=[POLICY_SOURCE], flags=["llm_error", "policy_check"])
             grounded = grounded_fallback(chunks) if not new_tickets else None
             if grounded:
                 text = f"Here's what our help docs say: {grounded}"
@@ -653,6 +680,11 @@ class Sahil:
             grounded = grounded_fallback(chunks, config.MAX_DISTANCE)
             clean = f"Here's what our help docs say: {grounded}" if grounded else config.FALLBACK_MESSAGE
             flags_extra.append("ungrounded_replaced")
+        if date_check and not new_tickets and not booking and contradicts(clean, date_check):
+            # e.g. "Yes, you can change your date" when the bus leaves in 12 hours.
+            log.warning("Date-change reply contradicted the policy check (%.1f h): %s", date_check.hours, clean[:200])
+            clean = date_check.reply()
+            flags_extra.append("policy_check_replaced")
         is_fallback = config.FALLBACK_MESSAGE in clean
         if chunks and not new_tickets and not is_fallback and "(Source:" not in clean:
             inferred = infer_citation(clean, chunks)
