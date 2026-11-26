@@ -234,3 +234,116 @@ def test_ticket_check_locks_after_five_unknown_ids(client):
     for n in range(5):
         assert client.post("/api/ticket/check", json={"session": s, "ticket_id": f"TKT-90{n}0"}).status_code == 404
     assert client.post("/api/ticket/check", json={"session": s, "ticket_id": "TKT-9100"}).status_code == 429
+
+
+# --- Emergencies are never rate limited (demo bug: "There has been accident. Please help!" got
+# "Too many requests") ------------------------------------------------------------------------
+DEMO_EMERGENCY = "There has been accident. Please help!"
+
+
+def _hit_chat_limit(client, monkeypatch, sid):
+    monkeypatch.setattr(server, "CHAT_LIMIT", (2, 600))
+    for _ in range(2):
+        assert client.post("/api/chat", json={"session": sid, "message": "thanks"}).status_code == 200
+    r = client.post("/api/chat", json={"session": sid, "message": "thanks"})
+    assert r.status_code == 429
+    return r
+
+
+def test_emergency_is_answered_after_the_chat_limit(client, monkeypatch):
+    sid = unlock(client)
+    _hit_chat_limit(client, monkeypatch, sid)
+    r = client.post("/api/chat", json={"session": sid, "message": DEMO_EMERGENCY})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["emergency"] and "112" in d["text"] and d["ticket_ids"] == ["TKT-1001"]
+    assert "Too many" not in d["text"]
+
+
+def test_emergency_is_answered_after_the_turn_cap(client, monkeypatch):
+    monkeypatch.setattr(server, "MAX_TURNS", 1)
+    sid = unlock(client)
+    assert client.post("/api/chat", json={"session": sid, "message": "thanks"}).status_code == 200
+    assert client.post("/api/chat", json={"session": sid, "message": "thanks"}).status_code == 429
+    d = client.post("/api/chat", json={"session": sid, "message": "The bus is on fire!"}).json()
+    assert d["emergency"] and "112" in d["text"]
+
+
+def test_emergency_past_its_own_limit_still_gets_112_but_no_new_tickets(client, monkeypatch):
+    monkeypatch.setattr(server, "EMERGENCY_LIMIT", (1, 600))
+    sid = unlock(client)
+    first = client.post("/api/chat", json={"session": sid, "message": DEMO_EMERGENCY}).json()
+    assert first["ticket_ids"] == ["TKT-1001"]
+    for msg in ("Someone is harassing me", "A passenger is injured and bleeding"):
+        r = client.post("/api/chat", json={"session": sid, "message": msg})
+        assert r.status_code == 200
+        d = r.json()
+        assert d["emergency"] and "112" in d["text"] and d["ticket_ids"] == [] and "TKT-1001" in d["text"]
+    other = unlock(client)  # a new chat from the same visitor past the limit: reply, no ticket spam
+    d = client.post("/api/chat", json={"session": other, "message": DEMO_EMERGENCY}).json()
+    assert d["emergency"] and "112" in d["text"] and d["ticket_ids"] == []
+
+
+def test_emergency_still_needs_the_passcode(client):
+    r = client.post("/api/chat", json={"session": "made-up", "message": DEMO_EMERGENCY})
+    assert r.status_code == 401
+
+
+def test_emergency_makes_no_model_call_even_when_gemini_is_out_of_quota(tickets, monkeypatch):
+    from agent.sahil import LLMError
+
+    class QuotaLLM:
+        calls = 0
+
+        def generate(self, *a, **k):
+            QuotaLLM.calls += 1
+            raise LLMError("429 RESOURCE_EXHAUSTED")
+
+    monkeypatch.setattr(config, "app_passcode", lambda: "demo-pass")
+    c = TestClient(server.create_app(lambda: Sahil(None, QuotaLLM(), tickets, config.BOOKINGS_CSV)))
+    sid = unlock(c)
+    d = c.post("/api/chat", json={"session": sid, "message": DEMO_EMERGENCY}).json()
+    assert d["emergency"] and "112" in d["text"] and d["ticket_ids"] == ["TKT-1001"]
+    assert QuotaLLM.calls == 0
+
+
+def test_limit_reply_is_friendly_and_says_when_to_retry(client, monkeypatch):
+    sid = unlock(client)
+    r = _hit_chat_limit(client, monkeypatch, sid)
+    msg = r.json()["error"]
+    assert "Too many requests" not in msg and "Please wait about" in msg and "112" in msg
+    assert int(r.headers["retry-after"]) > 0
+
+
+def test_one_chat_cannot_burst(client, monkeypatch):
+    monkeypatch.setattr(server, "CHAT_BURST_LIMIT", (3, 120))
+    a, b = unlock(client), unlock(client)
+    for _ in range(3):
+        assert client.post("/api/chat", json={"session": a, "message": "thanks"}).status_code == 200
+    assert client.post("/api/chat", json={"session": a, "message": "thanks"}).status_code == 429
+    assert client.post("/api/chat", json={"session": b, "message": "thanks"}).status_code == 200
+
+
+def test_global_cap_bounds_total_spend(client, monkeypatch):
+    monkeypatch.setattr(server, "GLOBAL_CHAT_LIMIT", (2, 600))
+    a, b = unlock(client), unlock(client)
+    assert client.post("/api/chat", json={"session": a, "message": "thanks"}).status_code == 200
+    assert client.post("/api/chat", json={"session": b, "message": "thanks"}).status_code == 200
+    assert client.post("/api/chat", json={"session": b, "message": "thanks"}).status_code == 429
+    assert client.post("/api/chat", json={"session": a, "message": DEMO_EMERGENCY}).status_code == 200
+
+
+def test_limits_suit_a_demo_audience_on_one_wifi():
+    # One venue IP, many people: the per-IP limit must allow a busy demo, and the cost caps must exist.
+    assert server.CHAT_LIMIT[0] >= 100 and server.GLOBAL_CHAT_LIMIT[0] >= server.CHAT_LIMIT[0]
+    assert server.CHAT_BURST_LIMIT[0] <= 30 and server.MAX_TURNS <= 100
+
+
+def test_safety_contact_form_is_not_rate_limited(client, monkeypatch):
+    sid = unlock(client)
+    _hit_chat_limit(client, monkeypatch, sid)
+    r = client.post("/api/ticket", json={"session": sid, "category": "safety", "description": "Bus accident on NH48"})
+    assert r.status_code == 200 and "112" in r.json()["text"] and r.json()["ticket_ids"]
+    r = client.post("/api/ticket", json={"session": sid, "category": "lost_item", "pnr": "BS558954",
+                                         "last4": "2087", "description": "Left my bag"})
+    assert r.status_code == 429

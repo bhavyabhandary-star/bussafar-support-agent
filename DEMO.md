@@ -49,4 +49,4 @@ Open the website and click **Ask Sahil** (or type in the big ask box). Enter the
 
 ### If something goes wrong
 - The first reply on Render's free plan can take about 50 seconds while the service wakes up. Open the site a minute before the demo.
-- "Too many requests" means a rate limit: start a new chat or wait a minute.
+- "Sahil is getting a lot of messages right now" means a rate limit: wait the time it says or start a new chat. Emergency messages (accident, fire, harassment) are always answered, even then.

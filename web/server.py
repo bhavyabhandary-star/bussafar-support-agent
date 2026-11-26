@@ -25,6 +25,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 import config
+from agent import guardrails
 from agent.sahil import Sahil
 from rag.document_loader import load_help_docs
 import re
@@ -33,13 +34,20 @@ from booking.booking_lookup import get_booking_status, normalize_pnr
 from support.ticket_manager import CATEGORIES, TicketError, TicketManager, _normalize_ticket_id
 
 log = logging.getLogger("bussafar.web")
+EMERGENCY_SOURCE = "Delays and operator cancellations"
 STATIC = Path(__file__).resolve().parent / "static"
 
 SESSION_TTL = 30 * 60          # idle chat sessions expire after 30 minutes
 SESSION_MAX_AGE = 2 * 60 * 60  # a session ID stops working 2 hours after the passcode was entered
 MAX_SESSIONS = 500             # oldest sessions are dropped beyond this
-MAX_TURNS = 40                 # messages per chat session
-CHAT_LIMIT = (30, 600)         # 30 messages per visitor per 10 minutes
+MAX_TURNS = 60                 # messages per chat session
+# Runaway-cost protection, in three layers. A venue Wi-Fi puts a whole demo audience behind one
+# IP address, so the per-visitor limit is generous and a per-chat burst limit stops one tab
+# from looping; the global cap bounds what all visitors together can spend on Gemini.
+CHAT_LIMIT = (120, 600)        # 120 messages per visitor (IP) per 10 minutes
+CHAT_BURST_LIMIT = (20, 120)   # 20 messages per chat session per 2 minutes
+GLOBAL_CHAT_LIMIT = (400, 600) # 400 messages per server instance per 10 minutes
+EMERGENCY_LIMIT = (30, 600)    # emergency turns per visitor before tickets stop (the reply never stops)
 UNLOCK_LIMIT = (5, 300)        # 5 wrong passcodes per visitor per 5 minutes
 SESSION_LIMIT = (20, 300)      # 20 new chats per visitor per 5 minutes
 
@@ -94,7 +102,7 @@ class SessionStore:
             self._items[sid] = (self.factory(), time.time(), 0)
         return sid
 
-    def take_turn(self, sid: str, history: list[dict] | None = None) -> Sahil | None:
+    def take_turn(self, sid: str, history: list[dict] | None = None, urgent: bool = False) -> Sahil | None:
         if not verify(sid):
             return None
         with self._lock:
@@ -106,7 +114,7 @@ class SessionStore:
                 item = (agent, time.time(), len(agent.history) // 2)
                 self._items[sid] = item
             agent, _, turns = item
-            if turns >= MAX_TURNS:
+            if turns >= MAX_TURNS and not urgent:  # an emergency is always answered
                 raise HTTPException(429, "This chat has reached its message limit. Please start a new chat.")
             self._items[sid] = (agent, time.time(), turns + 1)
             self._items.move_to_end(sid)
@@ -120,12 +128,25 @@ class SessionStore:
             self._items.popitem(last=False)
 
 
+def busy_message(wait: int) -> str:
+    """What a visitor sees when a limit is hit: how long to wait, and 112 for anyone in danger."""
+    when = "about a minute" if wait <= 90 else f"about {round(wait / 60)} minutes"
+    return (f"Sahil is getting a lot of messages right now. Please wait {when} and try again. "
+            "If this is an emergency, please call 112 right away.")
+
+
 class RateLimiter:
     def __init__(self) -> None:
         self._hits: dict[tuple[str, str], deque] = defaultdict(deque)
         self._lock = threading.Lock()
 
     def check(self, bucket: str, key: str, limit: tuple[int, int], record: bool = True) -> None:
+        wait = self.wait_for(bucket, key, limit, record)
+        if wait:
+            raise HTTPException(429, busy_message(wait), headers={"Retry-After": str(wait)})
+
+    def wait_for(self, bucket: str, key: str, limit: tuple[int, int], record: bool = True) -> int:
+        """Seconds until the next request fits (0 = allowed, and recorded if record is set)."""
         count, window = limit
         now = time.time()
         with self._lock:
@@ -133,9 +154,10 @@ class RateLimiter:
             while q and now - q[0] > window:
                 q.popleft()
             if len(q) >= count:
-                raise HTTPException(429, "Too many requests. Please wait a few minutes and try again.")
+                return max(1, int(window - (now - q[0])) + 1)
             if record:
                 q.append(now)
+            return 0
 
 
 def _clean_history(history: list[dict] | None) -> list[dict]:
@@ -265,10 +287,30 @@ def create_app(agent_factory=None) -> FastAPI:
         limiter.check("session", who, SESSION_LIMIT)
         return {"session": sessions().create(), "greeting": config.GREETING}
 
+    def emergency_only(agent: Sahil | None) -> dict:
+        """The emergency reply without a new ticket: used once the emergency limit is reached."""
+        tid = agent.safety_ticket if agent else None
+        return {"text": guardrails.emergency_reply(tid), "sources": [EMERGENCY_SOURCE], "ticket_ids": [],
+                "booking": None, "form": None, "emergency": True}
+
     @app.post("/api/chat")
     def chat(body: ChatIn, request: Request):
-        limiter.check("chat", visitor(request), CHAT_LIMIT)
-        agent = sessions().take_turn(body.session, body.history)
+        who = visitor(request)
+        check = guardrails.validate_input(body.message)
+        urgent = check.ok and guardrails.detect_emergency(check.text)
+        if urgent:
+            # Safety first: an accident, fire or harassment report is never rate limited. Its reply
+            # is fixed text from code (no Gemini call, so no cost), and a chat gets one safety ticket.
+            if not verify(body.session):
+                raise HTTPException(401, "Your chat expired. Please start a new chat.")
+            if limiter.wait_for("emergency", who, EMERGENCY_LIMIT):
+                log.warning('{"event":"emergency_limit","note":"reply sent without a new ticket"}')
+                return emergency_only(sessions().take_turn(body.session, body.history, urgent=True))
+        else:
+            limiter.check("chat", who, CHAT_LIMIT)
+            limiter.check("chat_burst", body.session[:64], CHAT_BURST_LIMIT)
+            limiter.check("chat_global", "all", GLOBAL_CHAT_LIMIT)
+        agent = sessions().take_turn(body.session, body.history, urgent=urgent)
         if agent is None:
             raise HTTPException(401, "Your chat expired. Please start a new chat.")
         started = time.time()
@@ -291,8 +333,16 @@ def create_app(agent_factory=None) -> FastAPI:
     @app.post("/api/ticket")
     def contact_person(body: TicketIn, request: Request):
         """The in-chat 'Contact a person' form. Same one-ticket-per-chat rule as the chat itself."""
-        limiter.check("chat", visitor(request), CHAT_LIMIT)
-        agent = sessions().take_turn(body.session)
+        urgent = body.category == "safety"
+        if urgent:  # a safety report is never rate limited; past the emergency limit it gets 112, no ticket
+            if not verify(body.session):
+                raise HTTPException(401, "Your chat expired. Please start a new chat.")
+            if limiter.wait_for("emergency", visitor(request), EMERGENCY_LIMIT):
+                log.warning('{"event":"emergency_limit","note":"safety form answered without a new ticket"}')
+                return emergency_only(sessions().take_turn(body.session, urgent=True))
+        else:
+            limiter.check("chat", visitor(request), CHAT_LIMIT)
+        agent = sessions().take_turn(body.session, urgent=urgent)
         if agent is None:
             raise HTTPException(401, "Your chat expired. Please start a new chat.")
         desc = " ".join(body.description.split())[: config.MAX_INPUT_CHARS]
@@ -363,7 +413,7 @@ def create_app(agent_factory=None) -> FastAPI:
 
     @app.exception_handler(HTTPException)
     async def http_error(_: Request, exc: HTTPException):
-        return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
+        return JSONResponse({"error": exc.detail}, status_code=exc.status_code, headers=exc.headers)
 
     @app.get("/")
     def index():
