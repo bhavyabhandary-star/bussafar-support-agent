@@ -36,6 +36,7 @@ log = logging.getLogger("bussafar.web")
 STATIC = Path(__file__).resolve().parent / "static"
 
 SESSION_TTL = 30 * 60          # idle chat sessions expire after 30 minutes
+SESSION_MAX_AGE = 2 * 60 * 60  # a session ID stops working 2 hours after the passcode was entered
 MAX_SESSIONS = 500             # oldest sessions are dropped beyond this
 MAX_TURNS = 40                 # messages per chat session
 CHAT_LIMIT = (30, 600)         # 30 messages per visitor per 10 minutes
@@ -65,7 +66,12 @@ def sign(token: str) -> str:
 
 def verify(sid: str) -> bool:
     token, _, mac = (sid or "").rpartition(".")
-    return bool(token) and hmac.compare_digest(sign(token), sid)
+    if not token or not hmac.compare_digest(sign(token), sid):
+        return False
+    # The token carries the time it was issued, so an old ID can't skip the passcode forever,
+    # even on a fresh serverless instance that has never seen it.
+    _, _, issued = token.rpartition("~")
+    return issued.isdigit() and 0 <= time.time() - int(issued) <= SESSION_MAX_AGE
 
 
 class SessionStore:
@@ -82,7 +88,7 @@ class SessionStore:
         self._lock = threading.Lock()
 
     def create(self) -> str:
-        sid = sign(secrets.token_urlsafe(24))
+        sid = sign(f"{secrets.token_urlsafe(24)}~{int(time.time())}")
         with self._lock:
             self._prune()
             self._items[sid] = (self.factory(), time.time(), 0)
@@ -239,7 +245,7 @@ def create_app(agent_factory=None) -> FastAPI:
     @app.get("/api/health")
     def health():
         return {"ok": True, "chat_model": config.CHAT_MODEL, "gemini_key_set": bool(config.google_api_key()),
-                "passcode_required": bool(config.app_passcode())}
+                "passcode_required": True, "passcode_set": bool(config.app_passcode())}
 
     @app.get("/api/help")
     def help_docs():
@@ -250,7 +256,10 @@ def create_app(agent_factory=None) -> FastAPI:
         who = visitor(request)
         limiter.check("wrong_passcode", who, UNLOCK_LIMIT, record=False)
         expected = config.app_passcode()
-        if expected and not hmac.compare_digest(body.passcode.encode(), expected.encode()):
+        if not expected:  # fail closed: no passcode configured means nobody gets in
+            log.warning('{"event":"passcode_not_configured"}')
+            raise HTTPException(503, "The chat is locked because its passcode is not set up yet.")
+        if not hmac.compare_digest(body.passcode.encode(), expected.encode()):
             limiter.check("wrong_passcode", who, UNLOCK_LIMIT)
             raise HTTPException(401, "Wrong passcode.")
         limiter.check("session", who, SESSION_LIMIT)
