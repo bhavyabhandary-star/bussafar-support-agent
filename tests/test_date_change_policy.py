@@ -67,6 +67,9 @@ def test_contradiction_detection():
     assert not contradicts("Yes, you can change your travel date once, for ₹100 plus any fare difference. "
                            "You cannot change it a second time. (Source: Cancellation and refund policy)", yes)
     assert contradicts("No, you can no longer change the date. (Source: Cancellation and refund policy)", yes)
+    # A "No" without the 24-hour reason is replaced by the reply that states it.
+    assert contradicts("No, because your bus leaves in 12 hours, you can no longer change your travel date. "
+                       "(Source: Cancellation and refund policy)", no)
 
 
 def _agent(retriever, tickets, reply):

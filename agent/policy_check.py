@@ -101,7 +101,8 @@ class DateChangeCheck:
         return (f"POLICY CHECK (worked out by BusSafar's system from the customer's message and the "
                 f"{POLICY_SOURCE}; it is correct): the bus leaves in {when}. One date change is allowed only "
                 f"up to 24 hours before departure, so a date change is NOT available for this booking. Start "
-                f"the reply with \"No,\". If they cancel instead, this band applies: {self.band}. Offer to "
+                f"the reply with \"No,\" and say that a date change is allowed only up to 24 hours before "
+                f"departure. If they cancel instead, this band applies: {self.band}. Offer to "
                 f"connect them to a person from our support team.")
 
     def reply(self) -> str:
@@ -151,6 +152,9 @@ _REFUSES_CHANGE = re.compile(
     re.IGNORECASE)
 
 
+_STATES_CUTOFF = re.compile(r"\b24[\s-]?(?:hours?|hrs?|hour)\b", re.IGNORECASE)
+
+
 def contradicts(reply: str, check: DateChangeCheck) -> bool:
     """True when the model's reply gives the opposite verdict to the policy check."""
     text = (reply or "").strip()
@@ -158,4 +162,5 @@ def contradicts(reply: str, check: DateChangeCheck) -> bool:
         return True
     if check.allowed:
         return bool(_OPENS_NO.search(text) or (not _OPENS_YES.search(text) and _REFUSES_CHANGE.search(text)))
-    return bool(_OPENS_YES.search(text) or not _NEGATES.search(text))
+    # A refusal must also give the reason, the 24-hour rule; otherwise the customer only hears "No".
+    return bool(_OPENS_YES.search(text) or not _NEGATES.search(text) or not _STATES_CUTOFF.search(text))

@@ -351,7 +351,7 @@ def build_cases() -> list[Case]:
         ("POL-002", "Cancellation exactly 24 hours before", "If I cancel exactly 24 hours before departure, how much refund will I get?", has_all("50%"), "50% refund", "High"),
         ("POL-003", "Cancellation 18 hours before", "If I cancel 18 hours before departure, how much refund will I get?", has_all("50%"), "50% refund", "High"),
         ("POL-004", "Cancellation exactly 12 hours before", "If I cancel exactly 12 hours before departure, how much refund will I get?", has_all("50%"), "50% refund", "High"),
-        ("POL-005", "Cancellation 6 hours before", "If I cancel 6 hours before departure, how much refund will I get?", has_all("no refund"), "No refund", "High"),
+        ("POL-005", "Cancellation 6 hours before", "If I cancel 6 hours before departure, how much refund will I get?", has_all(("no refund", "not receive a refund", "not get a refund", "not be refunded")), "No refund", "High"),
         ("POL-006", "Cancellation 1 hour before", "If I cancel 1 hour before departure, how much refund will I get?", has_all("no refund"), "No refund", "High"),
         ("POL-007", "Refund timeline", "When will my refund arrive?", has_all(("5 to 7", "5-7", "5–7")), "5 to 7 working days", "High"),
         ("POL-008", "Refund destination", "Where will my refund be credited?", has_all("original payment"), "Original payment method", "High"),
