@@ -57,6 +57,34 @@ def test_wrong_passcode_is_refused_and_limited(client):
     assert client.post("/api/session", json={"passcode": "nope"}).status_code == 429
 
 
+def test_missing_passcode_setting_keeps_the_chat_locked(tickets, monkeypatch):
+    monkeypatch.setattr(config, "app_passcode", lambda: None)
+    c = TestClient(server.create_app(lambda: Sahil(None, None, tickets, config.BOOKINGS_CSV)))
+    h = c.get("/api/health").json()
+    assert h["passcode_required"] is True and h["passcode_set"] is False
+    for code in ("", "anything"):
+        assert c.post("/api/session", json={"passcode": code}).status_code == 503
+
+
+def test_empty_passcode_is_refused(client):
+    assert client.post("/api/session", json={"passcode": ""}).status_code == 401
+
+
+def test_old_session_ids_stop_working(client, monkeypatch):
+    sid = unlock(client)
+    assert server.verify(sid)
+    real = server.time.time
+    monkeypatch.setattr(server.time, "time", lambda: real() + server.SESSION_MAX_AGE + 1)
+    assert not server.verify(sid)
+    assert not server.verify(server.sign("no-issue-time"))
+
+
+def test_widget_never_saves_the_session_in_the_browser():
+    js = (server.STATIC / "assets" / "sahil.js").read_text(encoding="utf-8")
+    assert "sessionStorage.setItem" not in js and "localStorage" not in js
+    assert "const needsPasscode = true" in js
+
+
 def test_chat_needs_a_session(client):
     assert client.post("/api/chat", json={"session": "made-up", "message": "hi"}).status_code == 401
 

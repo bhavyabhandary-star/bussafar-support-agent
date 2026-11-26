@@ -2,18 +2,16 @@
 // All server text is inserted with textContent, never as HTML.
 (function () {
   "use strict";
-  const KEY = "bussafar.sahil.session";
-  const store = {
-    get() { try { return sessionStorage.getItem(KEY); } catch (_) { return null; } },
-    set(v) { try { v ? sessionStorage.setItem(KEY, v) : sessionStorage.removeItem(KEY); } catch (_) {} },
-  };
+  // The chat session is kept in memory only, so every page load asks for the passcode again.
+  // Clear what older versions saved in the tab.
+  try { sessionStorage.removeItem("bussafar.sahil.session"); } catch (_) {}
   const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
 
-  let session = store.get();
+  let session = null;
   let turns = [];          // recent turns, sent so a fresh server instance can pick up the chat
   let busy = false;
   let pending = "";       // question waiting for the passcode
-  let needsPasscode = true;
+  const needsPasscode = true; // the server always needs the passcode
 
   // Fixed icon markup (our own constants, never server text).
   const ICONS = {
@@ -320,7 +318,6 @@
     if (starting) return starting;
     starting = post("/api/session", { passcode: passcode || "" }).then((d) => {
       session = d.session;
-      store.set(session);
       if (!log.children.length) bubble("bot", d.greeting);
       showGate(false);
     }).finally(() => { starting = null; });
@@ -345,7 +342,7 @@
     } catch (err) {
       t.remove();
       if (err.status === 401) {          // chat expired: ask to start again, keep the question
-        session = null; store.set(null); pending = text;
+        session = null; pending = text;
         log.lastChild && log.lastChild.remove();
         bubble("bot", "Your chat timed out. Please start again.");
         needsPasscode ? showGate(true) : start("").then(() => ask(pending)).catch(() => {});
@@ -397,11 +394,10 @@
   close.addEventListener("click", () => setOpen(false));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !panel.hidden) setOpen(false); });
   newBtn.addEventListener("click", () => {
-    session = null; store.set(null); log.textContent = ""; sos.hidden = true; turns = [];
+    session = null; log.textContent = ""; sos.hidden = true; turns = [];
     needsPasscode ? showGate(true) : start("").catch((e) => bubble("bot", e.message));
   });
 
-  fetch("/api/health").then((r) => r.json()).then((h) => { needsPasscode = !!h.passcode_required; }).catch(() => {});
 
   window.Sahil = {
     form(type) { setOpen(true); showForm(type); },

@@ -164,9 +164,9 @@ uvicorn web.server:app --port 8000
 # open http://localhost:8000
 ```
 
-The server (`web/server.py`) is the same Sahil agent as `app.py`, behind four endpoints: `GET /api/health`, `GET /api/help`, `POST /api/session` (passcode, if `APP_PASSCODE` is set) and `POST /api/chat`. Limits:
+The server (`web/server.py`) is the same Sahil agent as `app.py`, behind four endpoints: `GET /api/health`, `GET /api/help`, `POST /api/session` (passcode; if `APP_PASSCODE` is not set, the chat stays locked) and `POST /api/chat`. Limits:
 - 30 chat messages per visitor per 10 minutes.
-- 5 wrong passcodes per 5 minutes.
+- 5 wrong passcodes per 5 minutes. The passcode is asked on every page load, and a chat session stops working 2 hours after it was opened.
 - 40 messages per chat.
 - Chats expire after 30 minutes idle.
 
