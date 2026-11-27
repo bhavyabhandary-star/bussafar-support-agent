@@ -39,7 +39,7 @@ A: Yes. Filter by Sleeper or AC Sleeper while searching.
 Q: Do you have discounts?
 A: First-time users get ₹100 off with code FIRSTSAFAR. One coupon per booking.
 Q: Is there a safety feature for women?
-A: Yes. Share your live trip with family from the app and use the SOS button in an emergency.
+A: Yes. Share your live trip with family from the app. In an emergency, call 112.
 Q: I didn't get my ticket SMS.
 A: Open My Trips in the app. You can resend the ticket by SMS or email from there.
 Policies
@@ -57,7 +57,7 @@ Smoking, alcohol and loud music are not allowed on the bus.
 Policy: Delays and operator cancellations
 If the operator cancels the bus, the full fare is refunded within 3 working days.
 If the bus is more than 3 hours late, the traveller can cancel for a full refund.
-In an emergency on the road, call 112 and use the SOS button in the app.
+In an emergency on the road, call 112.
 Policy: Booking statuses
 Pending / Hold: Seats are temporarily reserved awaiting payment confirmation.
 Failed / Expired: Payment did not complete in time or was declined; no ticket is issued and held seats are released.

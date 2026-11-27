@@ -364,7 +364,7 @@
    "expect": {
     "includes": [
      [
-      "sos",
+      "live trip",
       "share"
      ]
     ],

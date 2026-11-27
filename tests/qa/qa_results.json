@@ -1,9 +1,9 @@
 {
  "meta": {
   "started": "2026-11-22 13:19",
-  "finished": "2026-11-27 07:22",
+  "finished": "2026-11-27 07:38",
   "model": "gemini-3.5-flash-lite",
-  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline); WEB re-run 2026-11-22 16:12 (offline); WEB re-run 2026-11-22 16:13 (offline); WEB re-run 2026-11-22 16:18 (offline); POL re-run 2026-11-27 03:28 (live); WEB re-run 2026-11-26 23:41 (offline); SAF-001,SAF-002,SAF-003,SAF-006,WEB re-run 2026-11-27 07:22 (offline)"
+  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline); WEB re-run 2026-11-22 16:12 (offline); WEB re-run 2026-11-22 16:13 (offline); WEB re-run 2026-11-22 16:18 (offline); POL re-run 2026-11-27 03:28 (live); WEB re-run 2026-11-26 23:41 (offline); SAF-001,SAF-002,SAF-003,SAF-006,WEB re-run 2026-11-27 07:22 (offline); WEB,SAF-001,SAF-002,SAF-003,SAF-006 re-run 2026-11-27 07:38 (offline)"
  },
  "rows": [
   {
