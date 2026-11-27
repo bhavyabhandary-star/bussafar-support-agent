@@ -1117,6 +1117,68 @@ def web_cases() -> list[dict]:
         ok = '"Cancel"' in js and '.sahil-card:not(.is-done)' in js and "is-done" in js
         return ok, "Cancel button present; an unfinished form is replaced by a new one; sent forms are locked"
 
+    def limited_client(**limits):
+        """A fresh website with tightened limits, so a test can hit them in a few messages."""
+        saved = {k: getattr(server, k) for k in limits}
+        for k, v in limits.items():
+            setattr(server, k, v)
+        lc = TestClient(server.create_app(
+            lambda: Sahil(None, None, TicketManager(tmp / f"limit_{len(out)}.csv"), config.BOOKINGS_CSV)))
+        sid = lc.post("/api/session", json={"passcode": "qa-test-passcode"}).json()["session"]
+        return lc, sid, lambda: [setattr(server, k, v) for k, v in saved.items()]
+
+    demo_msg = "There has been accident. Please help!"
+
+    def emergency_after_limit():
+        lc, sid, undo = limited_client(CHAT_LIMIT=(3, 600))
+        try:
+            codes = [lc.post("/api/chat", json={"session": sid, "message": "thanks"}).status_code for _ in range(4)]
+            r = lc.post("/api/chat", json={"session": sid, "message": demo_msg})
+            d = r.json()
+            ok = codes[-1] == 429 and r.status_code == 200 and d["emergency"] and "112" in d["text"] and len(d["ticket_ids"]) == 1
+            return ok, f"4th 'thanks' HTTP {codes[-1]}; emergency HTTP {r.status_code}: {d.get('text')}"
+        finally:
+            undo()
+
+    def emergency_after_turn_cap():
+        lc, sid, undo = limited_client(MAX_TURNS=2)
+        try:
+            codes = [lc.post("/api/chat", json={"session": sid, "message": "thanks"}).status_code for _ in range(3)]
+            r = lc.post("/api/chat", json={"session": sid, "message": "The bus is on fire!"})
+            d = r.json()
+            return codes[-1] == 429 and r.status_code == 200 and "112" in d["text"], f"cap HTTP {codes[-1]}; emergency HTTP {r.status_code}: {d.get('text')}"
+        finally:
+            undo()
+
+    def emergency_past_own_limit():
+        lc, sid, undo = limited_client(EMERGENCY_LIMIT=(1, 600))
+        try:
+            first = lc.post("/api/chat", json={"session": sid, "message": demo_msg}).json()
+            r = lc.post("/api/chat", json={"session": sid, "message": "Someone is harassing me"})
+            d = r.json()
+            ok = r.status_code == 200 and "112" in d["text"] and d["ticket_ids"] == [] and first["ticket_ids"][0] in d["text"]
+            return ok, f"HTTP {r.status_code}: {d.get('text')}"
+        finally:
+            undo()
+
+    def friendly_limit_reply():
+        lc, sid, undo = limited_client(CHAT_LIMIT=(1, 600))
+        try:
+            lc.post("/api/chat", json={"session": sid, "message": "thanks"})
+            r = lc.post("/api/chat", json={"session": sid, "message": "thanks"})
+            msg = r.json().get("error", "")
+            ok = r.status_code == 429 and "Too many requests" not in msg and "Please wait about" in msg and "112" in msg and r.headers.get("retry-after")
+            return bool(ok), f"HTTP {r.status_code}, Retry-After {r.headers.get('retry-after')}: {msg}"
+        finally:
+            undo()
+
+    def cost_caps():
+        ok = (server.CHAT_LIMIT[0] >= 100 and server.CHAT_BURST_LIMIT[0] <= 30
+              and server.GLOBAL_CHAT_LIMIT[0] >= server.CHAT_LIMIT[0] and server.MAX_TURNS <= 100)
+        return ok, (f"per visitor {server.CHAT_LIMIT[0]}/{server.CHAT_LIMIT[1] // 60} min, per chat "
+                    f"{server.CHAT_BURST_LIMIT[0]}/{server.CHAT_BURST_LIMIT[1] // 60} min, all visitors "
+                    f"{server.GLOBAL_CHAT_LIMIT[0]}/{server.GLOBAL_CHAT_LIMIT[1] // 60} min, {server.MAX_TURNS} turns per chat")
+
     try:
         add("WEB-001", "Open the website", "/", "Page loads with the Ask Sahil launcher and a strict CSP", "High", page)
         add("WEB-002", "Help Centre content", "/api/help", "BusSafar's 20 FAQs and 5 policies, word for word; 90/50/0 slabs", "Critical", help_docs)
@@ -1140,6 +1202,11 @@ def web_cases() -> list[dict]:
         add("WEB-024", "Track ticket: real ID", "lower-case ticket ID", "Accepted and tidied to TKT-xxxx", "High", ticket_check_real)
         add("WEB-025", "Track ticket: unknown ID", "TKT-9999", "Says there is no such ticket (404); nothing else revealed", "High", ticket_check_unknown)
         add("WEB-017", "Form controls", "sahil.js", "Cancel button; one open form at a time", "Medium", form_controls)
+        add("WEB-026", "Emergency after the message limit", demo_msg, "Still answered (200) with 112 and a safety ticket; never 'Too many requests'", "Critical", emergency_after_limit)
+        add("WEB-027", "Emergency after the chat's turn cap", "The bus is on fire!", "Still answered with 112", "Critical", emergency_after_turn_cap)
+        add("WEB-028", "Many emergency messages", "repeated safety reports", "Always 112; past the emergency limit no new tickets (reuses the first)", "High", emergency_past_own_limit)
+        add("WEB-029", "Message limit reply", "messages past the limit", "Friendly wait time, 112 for emergencies, Retry-After header", "Medium", friendly_limit_reply)
+        add("WEB-030", "Runaway-cost limits", "web/server.py", "Per-visitor, per-chat and all-visitor caps exist and suit a demo on shared Wi-Fi", "High", cost_caps)
     finally:
         config.app_passcode = saved_pass
     if WEB_BROWSER_RESULT.exists():

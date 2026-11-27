@@ -165,9 +165,13 @@ uvicorn web.server:app --port 8000
 ```
 
 The server (`web/server.py`) is the same Sahil agent as `app.py`, behind four endpoints: `GET /api/health`, `GET /api/help`, `POST /api/session` (passcode; if `APP_PASSCODE` is not set, the chat stays locked) and `POST /api/chat`. Limits:
-- 30 chat messages per visitor per 10 minutes.
+- 120 chat messages per visitor (IP address) per 10 minutes. This is generous because a venue Wi-Fi puts a whole demo audience behind one IP.
+- 20 messages per chat per 2 minutes, so one tab can't loop.
+- 400 messages per server instance per 10 minutes across all visitors: the ceiling on Gemini spend.
 - 5 wrong passcodes per 5 minutes. The passcode is asked on every page load, and a chat session stops working 2 hours after it was opened.
-- 40 messages per chat.
+- 60 messages per chat.
+- Emergencies are never limited. An accident, fire, injury or harassment message is answered by code (no Gemini call) with "call 112" and one high-priority safety ticket, even after every limit above is reached or when Gemini is out of quota. Past 30 emergency messages per visitor per 10 minutes the 112 reply still comes, but no new tickets are made.
+- A limit reply says how long to wait (and the `Retry-After` header carries it) and reminds anyone in danger to call 112.
 - Chats expire after 30 minutes idle.
 
 Strict security headers (CSP, no framing) are set. Each chat keeps its own memory and its own one-ticket rule.
