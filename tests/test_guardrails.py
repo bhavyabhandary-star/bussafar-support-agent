@@ -132,7 +132,7 @@ def make_agent(retriever, tickets, replies):
 def test_emergency_creates_high_priority_ticket_without_model(retriever, tickets):
     agent, llm = make_agent(retriever, tickets, [])
     r = agent.respond("The driver is driving dangerously right now!")
-    assert "112" in r.text and "SOS" in r.text
+    assert "112" in r.text and "SOS" not in r.text  # the website has no SOS button
     assert r.ticket_ids == ["TKT-1001"]
     assert tickets.get_ticket("TKT-1001")["priority"] == "high"
     assert llm.calls == []
