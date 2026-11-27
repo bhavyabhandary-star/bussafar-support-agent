@@ -307,8 +307,7 @@ OTHER_PASSENGER_REPLY = (
 
 def emergency_reply(ticket_id: str | None) -> str:
     base = (
-        "I'm sorry you're going through this. If you are in danger, please call 112 right "
-        "away and use the SOS button in the BusSafar app."
+        "I'm sorry you're going through this. If you are in danger, please call 112 right away."
     )
     if ticket_id:
         return (
@@ -316,6 +315,6 @@ def emergency_reply(ticket_id: str | None) -> str:
             f"{config.TICKET_REPLY_PROMISE} (Source: Delays and operator cancellations)"
         )
     return (
-        f"{base} I couldn't create a support ticket just now, so please also use the "
-        "SOS button and try again shortly. (Source: Delays and operator cancellations)"
+        f"{base} I couldn't create a support ticket just now, so please try again shortly. "
+        "(Source: Delays and operator cancellations)"
     )

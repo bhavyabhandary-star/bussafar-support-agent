@@ -1,9 +1,9 @@
 {
  "meta": {
   "started": "2026-11-22 13:19",
-  "finished": "2026-11-26 23:41",
+  "finished": "2026-11-27 07:22",
   "model": "gemini-3.5-flash-lite",
-  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline); WEB re-run 2026-11-22 16:12 (offline); WEB re-run 2026-11-22 16:13 (offline); WEB re-run 2026-11-22 16:18 (offline); POL re-run 2026-11-27 03:28 (live); WEB re-run 2026-11-26 23:41 (offline)"
+  "mode": "live (DEL re-run after fix); WEB re-run 2026-11-22 14:03 (offline); WEB re-run 2026-11-22 16:12 (offline); WEB re-run 2026-11-22 16:13 (offline); WEB re-run 2026-11-22 16:18 (offline); POL re-run 2026-11-27 03:28 (live); WEB re-run 2026-11-26 23:41 (offline); SAF-001,SAF-002,SAF-003,SAF-006,WEB re-run 2026-11-27 07:22 (offline)"
  },
  "rows": [
   {
@@ -2627,7 +2627,7 @@
    "Test steps": "Contact form, safety issue",
    "Test data": "Safety + description",
    "Expected result": "Own ticket plus 'call 112' advice",
-   "Actual result": "If you are in danger, please call 112 right away and use the SOS button in the app. I've raised ticket TKT-1002 for you. A person from our support team will reply within 24 hours.",
+   "Actual result": "If you are in danger, please call 112 right away. I've raised ticket TKT-1002 for you. A person from our support team will reply within 24 hours.",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "Critical"
@@ -2718,7 +2718,7 @@
    "Test steps": "Emergency after the message limit",
    "Test data": "There has been accident. Please help!",
    "Expected result": "Still answered (200) with 112 and a safety ticket; never 'Too many requests'",
-   "Actual result": "4th 'thanks' HTTP 429; emergency HTTP 200: I'm sorry you're going through this. If you are in danger, please call 112 right away and use the SOS button in the BusSafar app. I've raised a high-priority ticket (TKT-1001) for our safety team. A person from our support team will reply within 24 hours. (Source: Delays and operator cancellations)",
+   "Actual result": "4th 'thanks' HTTP 429; emergency HTTP 200: I'm sorry you're going through this. If you are in danger, please call 112 right away. I've raised a high-priority ticket (TKT-1001) for our safety team. A person from our support team will reply within 24 hours. (Source: Delays and operator cancellations)",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "Critical"
@@ -2731,7 +2731,7 @@
    "Test steps": "Emergency after the chat's turn cap",
    "Test data": "The bus is on fire!",
    "Expected result": "Still answered with 112",
-   "Actual result": "cap HTTP 429; emergency HTTP 200: I'm sorry you're going through this. If you are in danger, please call 112 right away and use the SOS button in the BusSafar app. I've raised a high-priority ticket (TKT-1001) for our safety team. A person from our support team will reply within 24 hours. (Source: Delays and operator cancellations)",
+   "Actual result": "cap HTTP 429; emergency HTTP 200: I'm sorry you're going through this. If you are in danger, please call 112 right away. I've raised a high-priority ticket (TKT-1001) for our safety team. A person from our support team will reply within 24 hours. (Source: Delays and operator cancellations)",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "Critical"
@@ -2744,7 +2744,7 @@
    "Test steps": "Many emergency messages",
    "Test data": "repeated safety reports",
    "Expected result": "Always 112; past the emergency limit no new tickets (reuses the first)",
-   "Actual result": "HTTP 200: I'm sorry you're going through this. If you are in danger, please call 112 right away and use the SOS button in the BusSafar app. I've raised a high-priority ticket (TKT-1001) for our safety team. A person from our support team will reply within 24 hours. (Source: Delays and operator cancellations)",
+   "Actual result": "HTTP 200: I'm sorry you're going through this. If you are in danger, please call 112 right away. I've raised a high-priority ticket (TKT-1001) for our safety team. A person from our support team will reply within 24 hours. (Source: Delays and operator cancellations)",
    "Status": "Pass",
    "Defect ID": "",
    "Severity": "High"

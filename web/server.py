@@ -388,7 +388,7 @@ def create_app(agent_factory=None) -> FastAPI:
             agent.session_tickets.setdefault(category, tid)
         text = f"I've raised ticket {tid} for you. {config.TICKET_REPLY_PROMISE}"
         if category == "safety":
-            text = "If you are in danger, please call 112 right away and use the SOS button in the app. " + text
+            text = "If you are in danger, please call 112 right away. " + text
         agent._remember(f"[Contact form] {desc}", text)
         log.info('{"event":"contact_form","category":"%s","ticket":"%s"}', category, tid)
         return {"text": text, "ticket_ids": [tid], "emergency": category == "safety"}

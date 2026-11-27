@@ -68,7 +68,7 @@
   sos.append("In danger? Call ");
   const tel = el("a", null, "112");
   tel.href = "tel:112";
-  sos.append(tel, " now and use the SOS button in the app.");
+  sos.append(tel, " now.");
 
   const log = el("div", "sahil-log");
   log.setAttribute("aria-live", "polite");
